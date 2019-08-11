@@ -17,7 +17,6 @@ from PIL import Image
 _prj_root = Path(__file__).resolve().parent.parent
 _dataset_dir = _prj_root / 'data' / 'kuzushiji-recognition'
 _converted_dir = _prj_root / 'data' / 'kuzushiji-recognition-converted'
-_char_crop_dir = _prj_root / 'data' / 'kuzushiji-recognition-char-crop'
 
 
 class KuzushijiRecognitionDataset(DatasetMixin):
@@ -95,9 +94,12 @@ class KuzushijiUnicodeMapping:
 class KuzushijiCharCropDataset(DatasetMixin):
     """Kuzushiji cropped character image dataset."""
 
-    def __init__(self) -> None:
-        self.dir_path = _char_crop_dir
-        annt = json.load((_char_crop_dir / 'annotations.json').open())
+    def __init__(self, split: Optional[str] = None) -> None:
+        split = split or 'trainval'
+        assert split in ('train', 'val', 'trainval')
+
+        self.dir_path = _converted_dir
+        annt = json.load((_converted_dir / f'char_images_{split}.json').open())
         self.data = annt['annotations']
         self.mapping = KuzushijiUnicodeMapping()
 

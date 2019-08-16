@@ -18,6 +18,8 @@ import numpy as np
 
 
 from kr.classifier.softmax.model import MobileNetV3
+from kr.classifier.softmax.crop import CenterCropAndResize
+from kr.classifier.softmax.crop import RandomCropAndResize
 from kr.datasets import KuzushijiCharCropDataset
 from kr.datasets import KuzushijiUnicodeMapping
 from kr.datasets import RandomSampler
@@ -41,14 +43,18 @@ def parse_args():
 
 class Preprocess:
 
-    def __init__(self, image_size=(112, 112)):
+    def __init__(self, image_size=(112, 112), augmentation=False):
         self.image_size = image_size
+        if augmentation:
+            self.crop_func = RandomCropAndResize(size=image_size)
+        else:
+            self.crop_func = CenterCropAndResize(size=image_size)
 
     def __call__(self, data):
         image = data['image']
         label = data['label']
 
-        image = image.resize(self.image_size, resample=Image.BILINEAR)
+        image = self.crop_func(image)
         image = np.asarray(image, dtype=np.float32).transpose(2, 0, 1)
         label = np.array(label, dtype=np.int32)
         return image, label
@@ -59,7 +65,7 @@ def prepare_dataset():
     n_train = int(len(dataset) * 0.99)
     train, val = split_dataset_random(dataset, n_train, seed=0)
     train = RandomSampler(train, virtual_size=10000)
-    train = TransformDataset(train, Preprocess())
+    train = TransformDataset(train, Preprocess(augmentation=True))
     val = TransformDataset(val, Preprocess())
     return train, val
 

@@ -39,6 +39,10 @@ def parse_args():
                         help='Output directory')
     parser.add_argument('--batchsize', '-b', type=int, default=96,
                         help='Validation minibatch size')
+    parser.add_argument('--lr', '-l', type=float, default=0.1,
+                        help='Learning rate')
+    parser.add_argument('--weight-decay', '-w', type=float, default=1e-5,
+                        help='Weight decay')
     args = parser.parse_args()
     return args
 
@@ -120,9 +124,9 @@ def main():
         model.to_gpu()
 
     # setup optimizer
-    optimizer = chainer.optimizers.NesterovAG(lr=0.1, momentum=0.9)
+    optimizer = chainer.optimizers.NesterovAG(lr=args.lr, momentum=0.9)
     optimizer.setup(train_model)
-    optimizer.add_hook(chainer.optimizer.WeightDecay(1e-5))
+    optimizer.add_hook(chainer.optimizer.WeightDecay(args.weight_decay))
 
     # setup trainer
     updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)

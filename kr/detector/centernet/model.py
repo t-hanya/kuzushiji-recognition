@@ -19,7 +19,7 @@ class UnetCenterNet(chainer.Chain):
     """U-Net like encoder-decoder model."""
 
     stride: int = 4
-    image_size: int = (480, 480)  # w, h
+    image_size: int = (832, 832)  # w, h
 
     def __init__(self, n_fg_class: int = 1) -> None:
         super().__init__()

@@ -13,7 +13,7 @@ from chainer import training
 from chainer.training import extension
 from chainer.training import extensions
 from chainer.training import triggers
-from chainer.datasets import split_dataset_random
+from chainer.datasets import split_dataset
 from chainer.datasets import TransformDataset
 from PIL import Image
 import numpy as np
@@ -75,7 +75,9 @@ def prepare_dataset():
         Preprocess(augmentation=True))
 
     val = TransformDataset(
-        KuzushijiCharCropDataset(split='val'),
+        split_dataset(
+            KuzushijiCharCropDataset(split='val'),
+            split_at=5000)[0],
         Preprocess(augmentation=False))
 
     return train, val

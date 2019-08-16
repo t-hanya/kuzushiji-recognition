@@ -61,12 +61,17 @@ class Preprocess:
 
 
 def prepare_dataset():
-    dataset = KuzushijiCharCropDataset()
-    n_train = int(len(dataset) * 0.99)
-    train, val = split_dataset_random(dataset, n_train, seed=0)
-    train = RandomSampler(train, virtual_size=10000)
-    train = TransformDataset(train, Preprocess(augmentation=True))
-    val = TransformDataset(val, Preprocess())
+
+    train = TransformDataset(
+        RandomSampler(
+            KuzushijiCharCropDataset(split='train'),
+            virtual_size=10000),
+        Preprocess(augmentation=True))
+
+    val = TransformDataset(
+        KuzushijiCharCropDataset(split='val')
+        Preprocess(augmentation=False))
+
     return train, val
 
 

@@ -1,5 +1,5 @@
 """
-Training script of DenseNet on CIFAR-10 dataset.
+Training script of kuzushiji character classification model.
 """
 
 
@@ -129,6 +129,7 @@ def main():
 
     # start training
     trainer.run()
+
 
 if __name__ == '__main__':
     main()

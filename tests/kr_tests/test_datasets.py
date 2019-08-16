@@ -6,6 +6,8 @@ Unittest for dataset loader.
 import numpy as np
 from PIL import Image
 
+import pytest
+
 from kr.datasets import KuzushijiRecognitionDataset
 from kr.datasets import KuzushijiUnicodeMapping
 from kr.datasets import KuzushijiCharCropDataset
@@ -13,9 +15,15 @@ from kr.datasets import KuzushijiCharCropDataset
 
 class TestKuzushijiRecognitionDataset:
 
-    def test(self):
-        dataset = KuzushijiRecognitionDataset()
-        assert len(dataset) == 3881
+    @pytest.mark.parametrize('split, expected_size', [
+        (None, 3881),  # default -> trainval
+        ('trainval', 3881),
+        ('train', 3686),
+        ('val', 195),
+    ])
+    def test(self, split, expected_size):
+        dataset = KuzushijiRecognitionDataset(split=split)
+        assert len(dataset) == expected_size
 
         data = dataset[0]
         assert type(data) == dict
@@ -38,10 +46,16 @@ class TestKuzushijiUnicodeMapping:
 
 class TestKuzushijiCharCropDataset:
 
-    def test(self):
-        dataset = KuzushijiCharCropDataset()
+    @pytest.mark.parametrize('split, expected_size', [
+        (None, 683464),  # default -> trainval
+        ('trainval', 683464),
+        ('train', 648774),
+        ('val', 34690),
+    ])
+    def test(self, split, expected_size):
+        dataset = KuzushijiCharCropDataset(split=split)
 
         data = dataset[0]
         assert isinstance(data['image'], Image.Image)
         assert type(data['label']) == int
-        assert len(dataset) == 683464
+        assert len(dataset) == expected_size

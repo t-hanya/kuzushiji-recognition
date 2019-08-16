@@ -6,6 +6,7 @@ Kuzushiji dataset
 import json
 from pathlib import Path
 import random
+from typing import Optional
 
 from chainer.dataset import DatasetMixin
 import numpy as np
@@ -15,18 +16,23 @@ from PIL import Image
 
 _prj_root = Path(__file__).resolve().parent.parent
 _dataset_dir = _prj_root / 'data' / 'kuzushiji-recognition'
-_char_crop_dir = _prj_root / 'data' / 'kuzushiji-recognition-char-crop'
+_converted_dir = _prj_root / 'data' / 'kuzushiji-recognition-converted'
 
 
 class KuzushijiRecognitionDataset(DatasetMixin):
     """Kaggle Kuzushiji Recognition training dataset."""
 
-    def __init__(self) -> None:
+    def __init__(self, split: Optional[str] = None) -> None:
         assert _dataset_dir.exists(), \
                 ('Download Kaggle Kuzushiji Recognition dataset '
                  'and move files to <prj>/data/kuzushiji-recognition/')
 
-        self.table = pd.read_csv(_dataset_dir / 'train.csv')
+        if split is None or split == 'trainval':
+            csv_path = _dataset_dir / 'train.csv'
+        elif split in ('train', 'val'):
+            csv_path = _converted_dir / f'{split}.csv'
+
+        self.table = pd.read_csv(csv_path)
         self.image_dir = _dataset_dir / 'train_images'
 
     def __len__(self) -> int:
@@ -88,9 +94,12 @@ class KuzushijiUnicodeMapping:
 class KuzushijiCharCropDataset(DatasetMixin):
     """Kuzushiji cropped character image dataset."""
 
-    def __init__(self) -> None:
-        self.dir_path = _char_crop_dir
-        annt = json.load((_char_crop_dir / 'annotations.json').open())
+    def __init__(self, split: Optional[str] = None) -> None:
+        split = split or 'trainval'
+        assert split in ('train', 'val', 'trainval')
+
+        self.dir_path = _converted_dir
+        annt = json.load((_converted_dir / f'char_images_{split}.json').open())
         self.data = annt['annotations']
         self.mapping = KuzushijiUnicodeMapping()
 

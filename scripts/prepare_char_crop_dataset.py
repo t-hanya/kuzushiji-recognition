@@ -15,7 +15,7 @@ sys.path.append(str(PRJ_ROOT))
 from kr.datasets import KuzushijiRecognitionDataset
 
 
-OUTPUT_ROOT = PRJ_ROOT / 'data'/ 'kuzushiji-recognition-char-crop'
+OUTPUT_ROOT = PRJ_ROOT / 'data'/ 'kuzushiji-recognition-converted'
 PADDING_SCALE = 0.2
 
 
@@ -33,47 +33,55 @@ def calc_padded_bboxes(bboxes: np.ndarray) -> np.ndarray:
 
 def main() -> None:
 
-    assert not OUTPUT_ROOT.exists(), 'Already converted.'
-    OUTPUT_ROOT.mkdir()
-
-    dataset = KuzushijiRecognitionDataset()
+    assert OUTPUT_ROOT.exists(), "Run 'prepare_train_val_split.py first.'"
 
     idx = 0
-    annotations = []
-    for i, data in enumerate(dataset):
-        print('progress: {}/{}'.format(i + 1, len(dataset)))
+    all_annotations = []
 
-        image = data['image']
-        bboxes = data['bboxes']
-        unicodes = data['unicodes']
-        padded_bboxes = calc_padded_bboxes(bboxes)
+    for split in ('train', 'val'):
+        dataset = KuzushijiRecognitionDataset(split)
+        annotations = []
 
-        for bbox, padded_bbox, unicode_ in zip(bboxes, padded_bboxes, unicodes):
+        for i, data in enumerate(dataset):
+            print('split={}, progress={}/{}'.format(split, i + 1, len(dataset)))
 
-            # define output directory and file name
-            dirname = str(idx // 10000 * 10000).zfill(8)
-            output_dir = OUTPUT_ROOT / 'images' / dirname
-            output_dir.mkdir(parents=True, exist_ok=True)
+            image = data['image']
+            bboxes = data['bboxes']
+            unicodes = data['unicodes']
+            padded_bboxes = calc_padded_bboxes(bboxes)
 
-            # save cropped image
-            fname = str(idx).zfill(8) + '.png'
-            cropped = image.crop(padded_bbox)
-            cropped.save(output_dir / fname)
+            for bbox, padded_bbox, unicode in zip(bboxes, padded_bboxes, unicodes):
 
-            # save annotation
-            modified = bbox - np.tile(padded_bbox[0:2], 2)
-            annotations.append({
-                'image_path': str((output_dir / fname).relative_to(OUTPUT_ROOT)),
-                'original_bbox': bbox.tolist(),
-                'bbox': modified.tolist(),
-                'unicode': unicode_
-            })
+                # define output directory and file name
+                dirname = str(idx // 10000 * 10000).zfill(8)
+                output_dir = OUTPUT_ROOT / 'char_images' / dirname
+                output_dir.mkdir(parents=True, exist_ok=True)
 
-            idx += 1
+                # save cropped image
+                fname = str(idx).zfill(8) + '.png'
+                cropped = image.crop(padded_bbox)
+                cropped.save(output_dir / fname)
 
-    annotation_path = OUTPUT_ROOT / 'annotations.json'
+                # save annotation
+                modified = bbox - np.tile(padded_bbox[0:2], 2)
+                annotations.append({
+                    'image_path': str((output_dir / fname).relative_to(OUTPUT_ROOT)),
+                    'original_bbox': bbox.tolist(),
+                    'bbox': modified.tolist(),
+                    'unicode': unicode
+                })
+
+                idx += 1
+
+        annotation_path = OUTPUT_ROOT / f'char_images_{split}.json'
+        with annotation_path.open('w') as f:
+            json.dump({'annotations': annotations}, f, indent=2)
+
+        all_annotations += annotations
+
+    annotation_path = OUTPUT_ROOT / f'char_images_trainval.json'
     with annotation_path.open('w') as f:
-        json.dump({'annotations': annotations}, f, indent=2)
+        json.dump({'annotations': all_annotations}, f, indent=2)
 
 
 if __name__ == '__main__':

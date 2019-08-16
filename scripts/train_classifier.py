@@ -4,6 +4,8 @@ Training script of kuzushiji character classification model.
 
 
 import argparse
+import json
+from pathlib import Path
 
 import chainer
 import chainer.links as L
@@ -90,8 +92,17 @@ class LearningRateDrop(extension.Extension):
         setattr(opt, self._attr, lr)
 
 
+def dump_args(args):
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    dump_path = out_dir / 'args.json'
+    with dump_path.open('w') as f:
+        json.dump(vars(args), f, indent=2)
+
+
 def main():
     args = parse_args()
+    dump_args(args)
 
     train, val = prepare_dataset()
     train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)

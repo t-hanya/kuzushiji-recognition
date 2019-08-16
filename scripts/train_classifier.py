@@ -75,7 +75,7 @@ def prepare_dataset():
         Preprocess(augmentation=True))
 
     val = TransformDataset(
-        KuzushijiCharCropDataset(split='val')
+        KuzushijiCharCropDataset(split='val'),
         Preprocess(augmentation=False))
 
     return train, val

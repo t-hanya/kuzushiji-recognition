@@ -37,7 +37,7 @@ def parse_args():
                         help='Resume from the specified snapshot')
     parser.add_argument('--out', '-o', default='result',
                         help='Output directory')
-    parser.add_argument('--batchsize', '-b', type=int, default=96,
+    parser.add_argument('--batchsize', '-b', type=int, default=192,
                         help='Validation minibatch size')
     parser.add_argument('--lr', '-l', type=float, default=0.1,
                         help='Learning rate')

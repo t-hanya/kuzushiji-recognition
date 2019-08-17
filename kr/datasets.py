@@ -125,3 +125,23 @@ class RandomSampler(DatasetMixin):
 
     def get_example(self, i):
         return random.choice(self.dataset)
+
+
+class KuzushijiTestImages(DatasetMixin):
+    """Test image set of Kaggle Kuzushiji Recognition."""
+
+    def __init__(self) -> None:
+        image_dir = _dataset_dir / 'test_images'
+        self.image_paths = sorted(image_dir.iterdir())
+
+    def __len__(self) -> int:
+        return len(self.image_paths)
+
+    def get_example(self, i) -> dict:
+        image_path = self.image_paths[i]
+
+        data = {
+            'image': Image.open(image_path),
+            'image_id': image_path.stem
+        }
+        return data

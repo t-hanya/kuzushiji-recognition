@@ -11,6 +11,7 @@ import pytest
 from kr.datasets import KuzushijiRecognitionDataset
 from kr.datasets import KuzushijiUnicodeMapping
 from kr.datasets import KuzushijiCharCropDataset
+from kr.datasets import KuzushijiTestImages
 
 
 class TestKuzushijiRecognitionDataset:
@@ -59,3 +60,14 @@ class TestKuzushijiCharCropDataset:
         assert isinstance(data['image'], Image.Image)
         assert type(data['label']) == int
         assert len(dataset) == expected_size
+
+
+class TestKuzushijiTestImages:
+
+    def test(self):
+        dataset = KuzushijiTestImages()
+        assert len(dataset) == 4150
+
+        data = dataset[0]
+        assert isinstance(data['image'], Image.Image)
+        assert data['image_id'] == 'test_00145af3'

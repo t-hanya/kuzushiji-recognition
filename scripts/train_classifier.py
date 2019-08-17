@@ -4,6 +4,8 @@ Training script of kuzushiji character classification model.
 
 
 import argparse
+import json
+from pathlib import Path
 
 import chainer
 import chainer.links as L
@@ -11,13 +13,15 @@ from chainer import training
 from chainer.training import extension
 from chainer.training import extensions
 from chainer.training import triggers
-from chainer.datasets import split_dataset_random
+from chainer.datasets import split_dataset
 from chainer.datasets import TransformDataset
 from PIL import Image
 import numpy as np
 
 
 from kr.classifier.softmax.model import MobileNetV3
+from kr.classifier.softmax.crop import CenterCropAndResize
+from kr.classifier.softmax.crop import RandomCropAndResize
 from kr.datasets import KuzushijiCharCropDataset
 from kr.datasets import KuzushijiUnicodeMapping
 from kr.datasets import RandomSampler
@@ -35,32 +39,47 @@ def parse_args():
                         help='Output directory')
     parser.add_argument('--batchsize', '-b', type=int, default=96,
                         help='Validation minibatch size')
+    parser.add_argument('--lr', '-l', type=float, default=0.1,
+                        help='Learning rate')
+    parser.add_argument('--weight-decay', '-w', type=float, default=1e-5,
+                        help='Weight decay')
     args = parser.parse_args()
     return args
 
 
 class Preprocess:
 
-    def __init__(self, image_size=(112, 112)):
+    def __init__(self, image_size=(112, 112), augmentation=False):
         self.image_size = image_size
+        if augmentation:
+            self.crop_func = RandomCropAndResize(size=image_size)
+        else:
+            self.crop_func = CenterCropAndResize(size=image_size)
 
     def __call__(self, data):
         image = data['image']
         label = data['label']
 
-        image = image.resize(self.image_size, resample=Image.BILINEAR)
+        image = self.crop_func(image)
         image = np.asarray(image, dtype=np.float32).transpose(2, 0, 1)
         label = np.array(label, dtype=np.int32)
         return image, label
 
 
 def prepare_dataset():
-    dataset = KuzushijiCharCropDataset()
-    n_train = int(len(dataset) * 0.99)
-    train, val = split_dataset_random(dataset, n_train, seed=0)
-    train = RandomSampler(train, virtual_size=10000)
-    train = TransformDataset(train, Preprocess())
-    val = TransformDataset(val, Preprocess())
+
+    train = TransformDataset(
+        RandomSampler(
+            KuzushijiCharCropDataset(split='train'),
+            virtual_size=10000),
+        Preprocess(augmentation=True))
+
+    val = TransformDataset(
+        split_dataset(
+            KuzushijiCharCropDataset(split='val'),
+            split_at=5000)[0],
+        Preprocess(augmentation=False))
+
     return train, val
 
 
@@ -79,8 +98,17 @@ class LearningRateDrop(extension.Extension):
         setattr(opt, self._attr, lr)
 
 
+def dump_args(args):
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    dump_path = out_dir / 'args.json'
+    with dump_path.open('w') as f:
+        json.dump(vars(args), f, indent=2)
+
+
 def main():
     args = parse_args()
+    dump_args(args)
 
     train, val = prepare_dataset()
     train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
@@ -98,9 +126,9 @@ def main():
         model.to_gpu()
 
     # setup optimizer
-    optimizer = chainer.optimizers.NesterovAG(lr=0.1, momentum=0.9)
+    optimizer = chainer.optimizers.NesterovAG(lr=args.lr, momentum=0.9)
     optimizer.setup(train_model)
-    optimizer.add_hook(chainer.optimizer.WeightDecay(1e-5))
+    optimizer.add_hook(chainer.optimizer.WeightDecay(args.weight_decay))
 
     # setup trainer
     updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)

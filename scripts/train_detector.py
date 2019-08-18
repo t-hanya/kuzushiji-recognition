@@ -5,6 +5,8 @@ Training script of kuzushiji charactor detection model.
 
 from typing import Tuple
 import argparse
+import json
+from pathlib import Path
 
 import chainer
 from chainer.backends import cuda
@@ -23,7 +25,6 @@ from kr.detector.centernet.heatmap import generate_heatmap
 from kr.detector.centernet.crop import RandomCropAndResize
 from kr.detector.centernet.crop import CenterCropAndResize
 from kr.datasets import KuzushijiRecognitionDataset
-
 
 
 def parse_args():
@@ -124,8 +125,17 @@ class LearningRateDrop(extension.Extension):
         setattr(opt, self._attr, lr)
 
 
+def dump_args(args):
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    dump_path = out_dir / 'args.json'
+    with dump_path.open('w') as f:
+        json.dump(vars(args), f, indent=2)
+
+
 def main():
     args = parse_args()
+    dump_args(args)
 
     # prepare dataset
     train, val = prepare_dataset()

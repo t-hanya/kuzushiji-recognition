@@ -9,6 +9,7 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 from chainer.backends import cuda
+from chainercv.utils import non_maximum_suppression
 import numpy as np
 from PIL import Image
 
@@ -93,6 +94,7 @@ class UnetCenterNet(chainer.Chain):
     def detect(self,
                image: Image.Image,
                score_threshold: float = 0.5,
+               nms_iou_threshold: float = 0.5
               ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Detect characters from the image."""
         img_w, img_h = image.size
@@ -118,6 +120,10 @@ class UnetCenterNet(chainer.Chain):
 
         bboxes[:, 0::2] *= img_w / hm_w
         bboxes[:, 1::2] *= img_h / hm_h
+
+        keep = non_maximum_suppression(bboxes, nms_iou_threshold, score=scores)
+        bboxes = bboxes[keep]
+        scores = scores[keep]
 
         if self.xp != np:
             bboxes = cuda.to_cpu(bboxes)

@@ -61,6 +61,14 @@ class TestKuzushijiCharCropDataset:
         assert type(data['label']) == int
         assert len(dataset) == expected_size
 
+    def test_num_samples_property(self):
+        dataset = KuzushijiCharCropDataset()
+        assert type(dataset.num_samples) == np.ndarray
+
+        mapping = KuzushijiUnicodeMapping()
+        assert dataset.num_samples.shape == (len(mapping),)
+        assert (dataset.num_samples >= 1).all()
+
 
 class TestKuzushijiTestImages:
 

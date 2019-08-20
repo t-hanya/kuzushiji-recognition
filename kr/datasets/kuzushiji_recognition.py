@@ -3,6 +3,7 @@ Kuzushiji dataset
 """
 
 
+from collections import Counter
 import json
 from pathlib import Path
 from typing import Optional
@@ -101,6 +102,12 @@ class KuzushijiCharCropDataset(DatasetMixin):
         annt = json.load((_converted_dir / f'char_images_{split}.json').open())
         self.data = annt['annotations']
         self.mapping = KuzushijiUnicodeMapping()
+
+        self.num_samples = np.ones(len(self.mapping), dtype=np.int32)
+        count = Counter([d['unicode'] for d in self.data])
+        for unicode, num_samples in count.most_common():
+            idx = self.mapping.unicode_to_index(unicode)
+            self.num_samples[idx] = num_samples
 
     def __len__(self) -> int:
         return len(self.data)

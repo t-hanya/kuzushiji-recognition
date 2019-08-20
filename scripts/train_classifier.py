@@ -8,7 +8,9 @@ import json
 from pathlib import Path
 
 import chainer
+import chainer.functions as F
 import chainer.links as L
+from chainer.backends import cuda
 from chainer import training
 from chainer.training import extension
 from chainer.training import extensions
@@ -47,6 +49,39 @@ def parse_args():
     return args
 
 
+class ClassBalancedTrainingModel(chainer.Chain):
+
+    def __init__(self, model, num_samples, beta=0.9) -> None:
+        super().__init__()
+        with self.init_scope():
+            self.model = model
+
+        self.beta = beta  # class balance parameter
+        self.num_samples = num_samples  # 1d array holding
+                                        # number of samples for each class
+        self._class_weight = None
+
+    @property
+    def class_weight(self):
+        if self._class_weight is None:
+            weight = (1 - self.beta) / (1 - self.beta ** self.num_samples)
+            weight = weight.astype(np.float32)
+            if self.xp != np:
+                weight = cuda.to_gpu(weight)
+            self._class_weight = weight
+        return self._class_weight
+
+    def __call__(self, x, labels):
+        y = self.model(x)
+
+        # class balanced softmax loss
+        # ref: https://arxiv.org/abs/1901.05555
+        loss = F.softmax_cross_entropy(y, labels, class_weight=self.class_weight)
+        acc = F.accuracy(y, labels)
+        chainer.report({'loss': loss, 'accuracy': acc}, self)
+        return loss
+
+
 class Preprocess:
 
     def __init__(self, image_size=(112, 112), augmentation=False):
@@ -68,9 +103,10 @@ class Preprocess:
 
 def prepare_dataset():
 
+    train_raw = KuzushijiCharCropDataset(split='train')
     train = TransformDataset(
         RandomSampler(
-            KuzushijiCharCropDataset(split='train'),
+            train_raw,
             virtual_size=10000),
         Preprocess(augmentation=True))
 
@@ -80,7 +116,7 @@ def prepare_dataset():
             split_at=5000)[0],
         Preprocess(augmentation=False))
 
-    return train, val
+    return train, val, train_raw.num_samples
 
 
 class LearningRateDrop(extension.Extension):
@@ -110,7 +146,7 @@ def main():
     args = parse_args()
     dump_args(args)
 
-    train, val = prepare_dataset()
+    train, val, num_samples = prepare_dataset()
     train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
     val_iter = chainer.iterators.MultiprocessIterator(val, args.batchsize,
                                                       repeat=False,
@@ -119,7 +155,7 @@ def main():
     # setup model
     n_classes = len(KuzushijiUnicodeMapping())
     model = MobileNetV3(n_classes)
-    train_model = L.Classifier(model)
+    train_model = ClassBalancedTrainingModel(model, num_samples)
 
     if args.gpu >= 0:
         chainer.backends.cuda.get_device(args.gpu).use()

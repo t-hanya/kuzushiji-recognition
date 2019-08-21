@@ -61,6 +61,9 @@ class ClassBalancedTrainingModel(chainer.Chain):
                                         # number of samples for each class
         self._class_weight = None
 
+        w = (1 - beta) / (1 - beta ** num_samples)
+        self._loss_scale = float((w * num_samples).sum() / num_samples.sum())
+
     @property
     def class_weight(self):
         if self._class_weight is None:
@@ -77,6 +80,10 @@ class ClassBalancedTrainingModel(chainer.Chain):
         # class balanced softmax loss
         # ref: https://arxiv.org/abs/1901.05555
         loss = F.softmax_cross_entropy(y, labels, class_weight=self.class_weight)
+
+        # adjust loss scale to be the same order as normal softmax loss.
+        loss /= self._loss_scale
+
         acc = F.accuracy(y, labels)
         chainer.report({'loss': loss, 'accuracy': acc}, self)
         return loss

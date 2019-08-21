@@ -131,7 +131,7 @@ class MobileNetV3(chainer.Chain):
             h = getattr(self, f'bneck{i}')(h)
         h = self.conv17(h)
         h = F.average_pooling_2d(h, h.shape[2:4])
-        h = self.fc18(h.reshape(h.shape[0], -1))
+        h = hard_swish(self.fc18(h.reshape(h.shape[0], -1)))
         h = self.fc19(h)
         return h
 

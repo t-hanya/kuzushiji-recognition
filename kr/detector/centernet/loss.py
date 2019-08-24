@@ -27,6 +27,7 @@ def calc_loss(heatmap: Variable,
 
     xp = cuda.get_array_module(gt_heatmap)
     N = max(len(gt_labels), 1)
+    eps = 1e-20
 
     i_ids = gt_indices[:, 0]
     j_ids = gt_indices[:, 1]
@@ -37,14 +38,12 @@ def calc_loss(heatmap: Variable,
     y = heatmap[0:-4]
     y_gt = gt_heatmap[0:-4]
     if len(gt_labels):
-        pos_loss = -(1 - y) ** alpha * F.log(y)
-        neg_loss = -(1 - y_gt) ** beta * (y ** alpha) * F.log(1 - y)
-        score_loss = F.sum((mask * pos_loss + (1 - mask)  * neg_loss)) / N
+        pos_loss = -((1 - y) ** alpha * F.log(y + eps))
+        neg_loss = -((1 - y_gt) ** beta * (y ** alpha) * F.log(1 - y + eps))
+        score_loss = F.mean((mask * pos_loss + (1 - mask)  * neg_loss))
     else:
-        neg_loss = -(1 - y_gt) ** beta * (y ** alpha) * F.log(1 - y)
-        score_loss = F.sum(neg_loss) / N
-
-    score_loss = F.mean_absolute_error(y, y_gt)
+        neg_loss = -(1 - y_gt) ** beta * (y ** alpha) * F.log(1 - y + eps)
+        score_loss = F.mean(neg_loss)
 
     if len(gt_labels):
         # size loss

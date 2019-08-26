@@ -16,6 +16,11 @@ from PIL import Image
 from .postprocess import heatmap_to_labeled_bboxes
 
 
+def _sigmoid(x):
+    xp = cuda.get_array_module(x)
+    return 1. / (1. + xp.exp(-x))
+
+
 class UnetCenterNet(chainer.Chain):
     """U-Net like encoder-decoder model."""
 
@@ -86,7 +91,6 @@ class UnetCenterNet(chainer.Chain):
         # force 0-1 value range to scores and offsets
         C = d2.shape[1]
         scores, sizes, offsets = F.split_axis(d2, (C - 4, C - 2), axis=1)
-        scores = F.sigmoid(scores)
         offsets = F.sigmoid(offsets)
 
         return F.concat([scores, sizes, offsets])
@@ -111,6 +115,7 @@ class UnetCenterNet(chainer.Chain):
 
             heatmap = self(imgs)
             heatmap = heatmap.array
+            heatmap[:-4] = _sigmoid(heatmap[:-4])
 
         bboxes, _, scores = heatmap_to_labeled_bboxes(heatmap,
                                                            score_threshold)

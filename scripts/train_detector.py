@@ -29,7 +29,7 @@ from kr.datasets import KuzushijiRecognitionDataset
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epoch', '-e', type=int, default=300,
+    parser.add_argument('--epoch', '-e', type=int, default=500,
                         help='Number of epochs to train')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='GPU ID (negative value indicates CPU)')

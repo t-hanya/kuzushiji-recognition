@@ -29,7 +29,7 @@ from kr.datasets import KuzushijiRecognitionDataset
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epoch', '-e', type=int, default=300,
+    parser.add_argument('--epoch', '-e', type=int, default=500,
                         help='Number of epochs to train')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='GPU ID (negative value indicates CPU)')
@@ -157,6 +157,7 @@ def main():
     optimizer = chainer.optimizers.NesterovAG(lr=1e-3)
     optimizer.setup(training_model)
     optimizer.add_hook(chainer.optimizer.WeightDecay(1e-5))
+    optimizer.add_hook(chainer.optimizer.GradientClipping(100.))
 
     # setup trainer
     updater = training.StandardUpdater(train_iter, optimizer,

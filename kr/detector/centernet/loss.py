@@ -30,27 +30,24 @@ def calc_loss(heatmap: Variable,
 
     i_ids = gt_indices[:, 0]
     j_ids = gt_indices[:, 1]
-    mask = xp.zeros_like(gt_heatmap[0:-4])
-    mask[gt_labels, i_ids, j_ids] = 1
+    flags = xp.zeros_like(gt_heatmap[0:-4], dtype=np.int32)
+    flags[gt_labels, i_ids, j_ids] = 1
 
-    # center score loss
-    y = heatmap[0:-4]
+    y_raw = heatmap[0:-4]
+    y = F.sigmoid(y_raw)
     y_gt = gt_heatmap[0:-4]
-    if len(gt_labels):
-        pos_loss = -(1 - y) ** alpha * F.log(y)
-        neg_loss = -(1 - y_gt) ** beta * (y ** alpha) * F.log(1 - y)
-        score_loss = F.sum((mask * pos_loss + (1 - mask)  * neg_loss)) / N
-    else:
-        neg_loss = -(1 - y_gt) ** beta * (y ** alpha) * F.log(1 - y)
-        score_loss = F.sum(neg_loss) / N
 
-    score_loss = F.mean_absolute_error(y, y_gt)
+    cross_entropy = F.sigmoid_cross_entropy(y_raw, flags, reduce='no')
+
+    pos_focal_weight = (1 - y) ** alpha
+    neg_focal_weight = ((1 - y_gt) ** beta) * (y ** alpha)
+    focal_weight = flags * pos_focal_weight + (1 - flags) * neg_focal_weight
+
+    score_loss = F.sum(focal_weight * cross_entropy) / N
 
     if len(gt_labels):
-        # size loss
         size_loss = F.mean_absolute_error(heatmap[-4:-2, i_ids, j_ids],
                                           gt_heatmap[-4:-2, i_ids, j_ids])
-        # offset loss
         offset_loss = F.mean_absolute_error(heatmap[-2:, i_ids, j_ids],
                                             gt_heatmap[-2:, i_ids, j_ids])
     else:

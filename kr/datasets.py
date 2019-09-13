@@ -45,6 +45,7 @@ class KuzushijiRecognitionDataset(DatasetMixin):
     def get_example(self, i: int) -> dict:
         row = self.table.iloc[i]
 
+        image_id = str(row.image_id)
         image = Image.open(self.image_dir / (row.image_id + '.jpg'))
 
         try:
@@ -60,7 +61,10 @@ class KuzushijiRecognitionDataset(DatasetMixin):
             unicodes = []
             bboxes = np.empty((0, 4), dtype=np.int)
 
-        return {'image': image, 'bboxes': bboxes, 'unicodes': unicodes}
+        return {'image_id': image_id,
+                'image': image,
+                'bboxes': bboxes,
+                'unicodes': unicodes}
 
 
 class KuzushijiUnicodeMapping:

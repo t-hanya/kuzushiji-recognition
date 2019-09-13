@@ -31,6 +31,7 @@ class TestKuzushijiRecognitionDataset:
 
         data = dataset[0]
         assert type(data) == dict
+        assert isinstance(data['image_id'], str)
         assert isinstance(data['image'], Image.Image)
         assert type(data['bboxes']) == np.ndarray
         assert type(data['unicodes']) == list

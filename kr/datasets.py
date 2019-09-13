@@ -102,12 +102,18 @@ class KuzushijiUnicodeMapping:
 class KuzushijiCharCropDataset(DatasetMixin):
     """Kuzushiji cropped character image dataset."""
 
-    def __init__(self, split: Optional[str] = None) -> None:
-        split = split or 'trainval'
-        assert split in ('train', 'val', 'trainval')
+    def __init__(self,
+                 split: Optional[str] = None,
+                 cv_index: int = 0,
+                ) -> None:
+        if split is None or split == 'trainval':
+            annt_path = _gsplit_dir / 'char_images_trainval.json'
+            annt = json.load(annt_path.open())
+        else:
+            annt_path = _gsplit_dir / f'char_images_{split}-{cv_index}.json'
+            annt = json.load(annt_path.open())
 
-        self.dir_path = _converted_dir
-        annt = json.load((_converted_dir / f'char_images_{split}.json').open())
+        self.dir_path = _gsplit_dir
         self.data = annt['annotations']
         self.mapping = KuzushijiUnicodeMapping()
 

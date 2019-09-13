@@ -52,19 +52,22 @@ class TestKuzushijiUnicodeMapping:
 
 class TestKuzushijiCharCropDataset:
 
-    @pytest.mark.parametrize('split, expected_size', [
-        (None, 683464),  # default -> trainval
-        ('trainval', 683464),
-        ('train', 648774),
-        ('val', 34690),
+    @pytest.mark.parametrize('split, cv_index, expected_size', [
+        (None, None, 683464),  # default -> trainval
+        ('trainval', None, 683464),
+        ('train', 0, None),
+        ('val', 0, None),
+        ('train', 2, None),
+        ('val', 2, None),
     ])
-    def test(self, split, expected_size):
-        dataset = KuzushijiCharCropDataset(split=split)
+    def test(self, split, cv_index, expected_size):
+        dataset = KuzushijiCharCropDataset(split=split, cv_index=cv_index)
 
         data = dataset[0]
         assert isinstance(data['image'], Image.Image)
         assert type(data['label']) == int
-        assert len(dataset) == expected_size
+        if expected_size is not None:
+            assert len(dataset) == expected_size
 
 
 class TestKuzushijiTestImages:

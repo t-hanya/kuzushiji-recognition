@@ -45,6 +45,12 @@ class TrainingModel(chainer.Chain):
             size_loss += ret[1]
             offset_loss += ret[2]
 
+        # normalize scale
+        batchsize = len(heatmap)
+        score_loss /= batchsize
+        size_loss /= batchsize
+        offset_loss /= batchsize
+
         loss = score_loss + size_loss + offset_loss
 
         chainer.report({'loss': loss,

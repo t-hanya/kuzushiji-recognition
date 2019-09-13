@@ -9,10 +9,16 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 from chainer.backends import cuda
+from chainercv.utils import non_maximum_suppression
 import numpy as np
 from PIL import Image
 
 from .postprocess import heatmap_to_labeled_bboxes
+
+
+def _sigmoid(x):
+    xp = cuda.get_array_module(x)
+    return 1. / (1. + xp.exp(-x))
 
 
 class UnetCenterNet(chainer.Chain):
@@ -85,7 +91,6 @@ class UnetCenterNet(chainer.Chain):
         # force 0-1 value range to scores and offsets
         C = d2.shape[1]
         scores, sizes, offsets = F.split_axis(d2, (C - 4, C - 2), axis=1)
-        scores = F.sigmoid(scores)
         offsets = F.sigmoid(offsets)
 
         return F.concat([scores, sizes, offsets])
@@ -93,6 +98,7 @@ class UnetCenterNet(chainer.Chain):
     def detect(self,
                image: Image.Image,
                score_threshold: float = 0.5,
+               nms_iou_threshold: float = 0.5
               ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Detect characters from the image."""
         img_w, img_h = image.size
@@ -109,6 +115,7 @@ class UnetCenterNet(chainer.Chain):
 
             heatmap = self(imgs)
             heatmap = heatmap.array
+            heatmap[:-4] = _sigmoid(heatmap[:-4])
 
         bboxes, _, scores = heatmap_to_labeled_bboxes(heatmap,
                                                            score_threshold)
@@ -118,6 +125,10 @@ class UnetCenterNet(chainer.Chain):
 
         bboxes[:, 0::2] *= img_w / hm_w
         bboxes[:, 1::2] *= img_h / hm_h
+
+        keep = non_maximum_suppression(bboxes, nms_iou_threshold, score=scores)
+        bboxes = bboxes[keep]
+        scores = scores[keep]
 
         if self.xp != np:
             bboxes = cuda.to_cpu(bboxes)

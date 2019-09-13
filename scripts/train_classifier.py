@@ -29,7 +29,7 @@ from kr.datasets import RandomSampler
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epoch', '-e', type=int, default=300,
+    parser.add_argument('--epoch', '-e', type=int, default=600,
                         help='Number of epochs to train')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='GPU ID (negative value indicates CPU)')
@@ -37,7 +37,7 @@ def parse_args():
                         help='Resume from the specified snapshot')
     parser.add_argument('--out', '-o', default='result',
                         help='Output directory')
-    parser.add_argument('--batchsize', '-b', type=int, default=96,
+    parser.add_argument('--batchsize', '-b', type=int, default=192,
                         help='Validation minibatch size')
     parser.add_argument('--lr', '-l', type=float, default=0.1,
                         help='Learning rate')

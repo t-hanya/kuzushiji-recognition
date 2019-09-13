@@ -17,12 +17,16 @@ from PIL import Image
 _prj_root = Path(__file__).resolve().parent.parent
 _dataset_dir = _prj_root / 'data' / 'kuzushiji-recognition'
 _converted_dir = _prj_root / 'data' / 'kuzushiji-recognition-converted'
+_gsplit_dir = _prj_root / 'data' / 'kuzushiji-recognition-gsplit'
 
 
 class KuzushijiRecognitionDataset(DatasetMixin):
     """Kaggle Kuzushiji Recognition training dataset."""
 
-    def __init__(self, split: Optional[str] = None) -> None:
+    def __init__(self,
+                 split: Optional[str] = None,
+                 cv_index: int = 0,
+                ) -> None:
         assert _dataset_dir.exists(), \
                 ('Download Kaggle Kuzushiji Recognition dataset '
                  'and move files to <prj>/data/kuzushiji-recognition/')
@@ -30,7 +34,7 @@ class KuzushijiRecognitionDataset(DatasetMixin):
         if split is None or split == 'trainval':
             csv_path = _dataset_dir / 'train.csv'
         elif split in ('train', 'val'):
-            csv_path = _converted_dir / f'{split}.csv'
+            csv_path = _gsplit_dir / f'{split}-{cv_index}.csv'
 
         self.table = pd.read_csv(csv_path)
         self.image_dir = _dataset_dir / 'train_images'

@@ -17,12 +17,16 @@ from PIL import Image
 _prj_root = Path(__file__).resolve().parent.parent
 _dataset_dir = _prj_root / 'data' / 'kuzushiji-recognition'
 _converted_dir = _prj_root / 'data' / 'kuzushiji-recognition-converted'
+_gsplit_dir = _prj_root / 'data' / 'kuzushiji-recognition-gsplit'
 
 
 class KuzushijiRecognitionDataset(DatasetMixin):
     """Kaggle Kuzushiji Recognition training dataset."""
 
-    def __init__(self, split: Optional[str] = None) -> None:
+    def __init__(self,
+                 split: Optional[str] = None,
+                 cv_index: int = 0,
+                ) -> None:
         assert _dataset_dir.exists(), \
                 ('Download Kaggle Kuzushiji Recognition dataset '
                  'and move files to <prj>/data/kuzushiji-recognition/')
@@ -30,7 +34,7 @@ class KuzushijiRecognitionDataset(DatasetMixin):
         if split is None or split == 'trainval':
             csv_path = _dataset_dir / 'train.csv'
         elif split in ('train', 'val'):
-            csv_path = _converted_dir / f'{split}.csv'
+            csv_path = _gsplit_dir / f'{split}-{cv_index}.csv'
 
         self.table = pd.read_csv(csv_path)
         self.image_dir = _dataset_dir / 'train_images'
@@ -41,6 +45,7 @@ class KuzushijiRecognitionDataset(DatasetMixin):
     def get_example(self, i: int) -> dict:
         row = self.table.iloc[i]
 
+        image_id = str(row.image_id)
         image = Image.open(self.image_dir / (row.image_id + '.jpg'))
 
         try:
@@ -56,7 +61,10 @@ class KuzushijiRecognitionDataset(DatasetMixin):
             unicodes = []
             bboxes = np.empty((0, 4), dtype=np.int)
 
-        return {'image': image, 'bboxes': bboxes, 'unicodes': unicodes}
+        return {'image_id': image_id,
+                'image': image,
+                'bboxes': bboxes,
+                'unicodes': unicodes}
 
 
 class KuzushijiUnicodeMapping:
@@ -94,12 +102,18 @@ class KuzushijiUnicodeMapping:
 class KuzushijiCharCropDataset(DatasetMixin):
     """Kuzushiji cropped character image dataset."""
 
-    def __init__(self, split: Optional[str] = None) -> None:
-        split = split or 'trainval'
-        assert split in ('train', 'val', 'trainval')
+    def __init__(self,
+                 split: Optional[str] = None,
+                 cv_index: int = 0,
+                ) -> None:
+        if split is None or split == 'trainval':
+            annt_path = _gsplit_dir / 'char_images_trainval.json'
+            annt = json.load(annt_path.open())
+        else:
+            annt_path = _gsplit_dir / f'char_images_{split}-{cv_index}.json'
+            annt = json.load(annt_path.open())
 
-        self.dir_path = _converted_dir
-        annt = json.load((_converted_dir / f'char_images_{split}.json').open())
+        self.dir_path = _gsplit_dir
         self.data = annt['annotations']
         self.mapping = KuzushijiUnicodeMapping()
 

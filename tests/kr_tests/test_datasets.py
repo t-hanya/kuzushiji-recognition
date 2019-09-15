@@ -16,22 +16,27 @@ from kr.datasets import KuzushijiTestImages
 
 class TestKuzushijiRecognitionDataset:
 
-    @pytest.mark.parametrize('split, expected_size', [
-        (None, 3881),  # default -> trainval
-        ('trainval', 3881),
-        ('train', 3686),
-        ('val', 195),
+    @pytest.mark.parametrize('split, cv_index, expected_size', [
+        (None, None, 3881),  # default -> trainval
+        ('trainval', None, 3881),
+        ('train', 0, None),
+        ('val', 0, None),
+        ('train', 1, None),
+        ('val', 1, None),
     ])
-    def test(self, split, expected_size):
-        dataset = KuzushijiRecognitionDataset(split=split)
-        assert len(dataset) == expected_size
+    def test(self, split, cv_index, expected_size):
+        dataset = KuzushijiRecognitionDataset(split=split, cv_index=cv_index)
+        if expected_size is not None:
+            assert len(dataset) == expected_size
 
         data = dataset[0]
         assert type(data) == dict
+        assert isinstance(data['image_id'], str)
         assert isinstance(data['image'], Image.Image)
         assert type(data['bboxes']) == np.ndarray
         assert type(data['unicodes']) == list
-        assert type(data['unicodes'][0]) == str
+        if data['unicodes']:
+            assert type(data['unicodes'][0]) == str
 
 
 class TestKuzushijiUnicodeMapping:
@@ -47,19 +52,22 @@ class TestKuzushijiUnicodeMapping:
 
 class TestKuzushijiCharCropDataset:
 
-    @pytest.mark.parametrize('split, expected_size', [
-        (None, 683464),  # default -> trainval
-        ('trainval', 683464),
-        ('train', 648774),
-        ('val', 34690),
+    @pytest.mark.parametrize('split, cv_index, expected_size', [
+        (None, None, 683464),  # default -> trainval
+        ('trainval', None, 683464),
+        ('train', 0, None),
+        ('val', 0, None),
+        ('train', 2, None),
+        ('val', 2, None),
     ])
-    def test(self, split, expected_size):
-        dataset = KuzushijiCharCropDataset(split=split)
+    def test(self, split, cv_index, expected_size):
+        dataset = KuzushijiCharCropDataset(split=split, cv_index=cv_index)
 
         data = dataset[0]
         assert isinstance(data['image'], Image.Image)
         assert type(data['label']) == int
-        assert len(dataset) == expected_size
+        if expected_size is not None:
+            assert len(dataset) == expected_size
 
 
 class TestKuzushijiTestImages:

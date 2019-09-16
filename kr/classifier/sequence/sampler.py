@@ -69,15 +69,18 @@ class KuzushijiMaskedSequenceGenerator(DatasetMixin):
                 v = np.random.rand()
                 if v < 0.2:
                     src_img = img
+                    tgt_uni = uni
                 elif v < 0.4:
                     d = _random_pop(other_chars)
                     src_img = d[0]
+                    tgt_uni = None
                 else:
                     src_img = Image.new('RGB', (80, 80), (128, 128, 128))
+                    tgt_uni = None
 
                 # sample candidates
                 candidates = [img] + [_random_pop(other_chars)[0] for _ in range(3)]
-                ret.append({'image': src_img, 'candidates': candidates, 'unicode': uni})
+                ret.append({'image': src_img, 'candidates': candidates, 'unicode': tgt_uni})
             else:
                 ret.append({'image': img, 'candidates': None, 'unicode': uni})
         return ret

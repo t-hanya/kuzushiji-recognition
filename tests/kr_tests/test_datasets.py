@@ -12,6 +12,7 @@ from kr.datasets import KuzushijiRecognitionDataset
 from kr.datasets import KuzushijiUnicodeMapping
 from kr.datasets import KuzushijiCharCropDataset
 from kr.datasets import KuzushijiTestImages
+from kr.datasets import KuzushijiSequenceDataset
 
 
 class TestKuzushijiRecognitionDataset:
@@ -79,3 +80,23 @@ class TestKuzushijiTestImages:
         data = dataset[0]
         assert isinstance(data['image'], Image.Image)
         assert data['image_id'] == 'test_00145af3'
+
+
+class TestKuzushijiSequenceDataset:
+
+    @pytest.mark.parametrize('split, cv_index', [
+        ('trainval', None),
+        ('train', 0),
+        ('val', 0),
+        ('train', 3),
+        ('val', 3),
+    ])
+    def test(self, split, cv_index):
+        dataset = KuzushijiSequenceDataset(split=split, cv_index=cv_index)
+
+        data = dataset[0]
+        assert type(data['images']) == list
+        assert isinstance(data['images'][0], Image.Image)
+
+        assert type(data['unicodes']) == list
+        assert type(data['unicodes'][0]) == str

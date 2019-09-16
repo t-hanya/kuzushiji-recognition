@@ -5,6 +5,7 @@ Kuzushiji dataset
 
 import json
 from pathlib import Path
+import pickle
 import random
 from typing import Optional
 
@@ -18,6 +19,7 @@ _prj_root = Path(__file__).resolve().parent.parent
 _dataset_dir = _prj_root / 'data' / 'kuzushiji-recognition'
 _converted_dir = _prj_root / 'data' / 'kuzushiji-recognition-converted'
 _gsplit_dir = _prj_root / 'data' / 'kuzushiji-recognition-gsplit'
+_seq_dir = _prj_root / 'data' / 'kuzushiji-recognition-seq'
 
 
 class KuzushijiRecognitionDataset(DatasetMixin):
@@ -159,3 +161,33 @@ class KuzushijiTestImages(DatasetMixin):
             'image_id': image_path.stem
         }
         return data
+
+
+class KuzushijiSequenceDataset(DatasetMixin):
+    """Kuzushiji sequence dataset."""
+
+    def __init__(self, split: str = 'trainval', cv_index: int = 0) -> None:
+        if split is None or split == 'trainval':
+            annt_path = _seq_dir / 'trainval.json'
+        else:
+            annt_path = _seq_dir / '{}-{}.json'.format(split, cv_index)
+        self.annotations = json.load(annt_path.open())['annotations']
+
+        prev_image_id = None
+        page_index = -1
+        page_indices = []
+        for annt in self.annotations:
+            if annt['image_id'] != prev_image_id:
+                prev_image_id = annt['image_id']
+                page_index += 1
+            page_indices.append(page_index)
+        self.page_indices = np.array(page_indices, dtype=np.int32)
+
+    def __len__(self) -> int:
+        return len(self.annotations)
+
+    def get_example(self, index):
+        pkl_path = _seq_dir / self.annotations[index]['data_path']
+        with pkl_path.open('rb') as f:
+            sequence = pickle.load(f)
+        return sequence

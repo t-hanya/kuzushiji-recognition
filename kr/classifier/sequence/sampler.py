@@ -16,7 +16,7 @@ class KuzushijiMaskedSequenceGenerator(DatasetMixin):
 
     def __init__(self,
                  dataset: KuzushijiSequenceDataset,
-                 max_length: int = 10
+                 max_length: int = 16
                 ) -> None:
         self.dataset = dataset
         self.max_length = max_length

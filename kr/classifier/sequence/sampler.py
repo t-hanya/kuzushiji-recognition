@@ -45,7 +45,7 @@ class KuzushijiMaskedSequenceGenerator(DatasetMixin):
             replace=False)
 
         other_chars = []
-        for i in range(len(other_sequence_indices)):
+        for i in other_sequence_indices:
             seq = self.dataset[i]
             for img, uni in zip(seq['images'], seq['unicodes']):
                 other_chars.append((img, uni))
@@ -56,9 +56,12 @@ class KuzushijiMaskedSequenceGenerator(DatasetMixin):
 
         ret = []
         sequence = self.dataset[index]
-        if len(sequence) > self.max_length:
-            i = np.random.randint(0, len(sequence) - self.max_length + 1)
-            sequence = sequence[i: i + self.max_length]
+        if len(sequence['images']) > self.max_length:
+            i = np.random.randint(0, len(sequence['images']) - self.max_length + 1)
+            sequence = {
+                'images': sequence['images'][i: i + self.max_length],
+                'unicodes': sequence['unicodes'][i: i + self.max_length]
+            }
 
         for img, uni in zip(sequence['images'], sequence['unicodes']):
             if np.random.rand() <= self.mask_prob and len(other_chars) >= 4:

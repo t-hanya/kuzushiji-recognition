@@ -17,6 +17,8 @@ from chainer import training
 from chainer.training import extension
 from chainer.training import extensions
 from chainer.training import triggers
+from chainer.dataset import DatasetMixin
+from chainer.datasets import ConcatenatedDataset
 from chainer.datasets import TransformDataset
 from chainer.datasets import split_dataset_random
 from PIL import Image
@@ -67,6 +69,7 @@ class Augmentation:
         images = np.stack([np.asarray(img, dtype=np.float32).transpose(2, 0, 1)
                            for img in images])
         labels = np.array([self.mapping.unicode_to_index(data['unicode'])
+                           if data['unicode'] is not None else -1
                            for data in seq], dtype=np.int32)
         none = np.empty((0, 3, 64, 64), dtype=np.float32)
         candidates = []
@@ -98,6 +101,7 @@ class Preprocess:
         images = np.stack([np.asarray(img, dtype=np.float32).transpose(2, 0, 1)
                            for img in images])
         labels = np.array([self.mapping.unicode_to_index(uni)
+                           if data['unicode'] is not None else -1
                            for uni in seq['unicodes']], dtype=np.int32)
         none = np.empty((0, 3, 64, 64), dtype=np.float32)
         candidates = [none for _ in range(len(images))]
@@ -105,13 +109,39 @@ class Preprocess:
         return images, labels, candidates, mask_positions
 
 
+class MaskUnicode(DatasetMixin):
+    """Dataset wrapper to mask unicode label."""
+
+    def __init__(self, dataset: KuzushijiSequenceDataset) -> None:
+        self.dataset = dataset
+
+    @property
+    def page_indices(self) -> np.ndarray:
+        return self.dataset.page_indices
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def get_example(self, i):
+        data = self.dataset[i].copy()
+        data['unicodes'] = [None for _ in data['unicodes']]
+        return data
+
+
 def prepare_dataset():
     train_raw = KuzushijiMaskedSequenceGenerator(
         KuzushijiSequenceDataset(split='train'))
+    val_masked_raw = KuzushijiMaskedSequenceGenerator(
+        MaskUnicode(
+            KuzushijiSequenceDataset(split='val')))
+
     val_raw = KuzushijiSequenceDataset(split='val')
 
     train = TransformDataset(
-        RandomSampler(train_raw, 10000),
+        ConcatenatedDataset(
+            RandomSampler(train_raw, 10000),
+            RandomSampler(val_masked_raw, 10000)
+        ),
         Augmentation())
 
     val = TransformDataset(

@@ -36,14 +36,14 @@ class SequenceClassifier(chainer.Chain):
                                         for i, img in enumerate(images)])
 
         # CNN
-        h = self.cnn(F.concat(images, axis=0))
+        h = F.relu(self.cnn(F.concat(images, axis=0)))
         h = [h[batch_indices == i] for i in range(N)]
 
         # Bi-LSTM
         _, _, embs = self.lstm(None, None, h)
 
         # FC
-        h = self.fc(F.concat(embs, axis=0))
+        h = self.fc(F.relu(F.concat(embs, axis=0)))
         ret = [h[batch_indices == i] for i in range(N)]
         if return_embeddings:
             return ret, embs

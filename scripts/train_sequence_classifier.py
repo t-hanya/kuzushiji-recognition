@@ -101,7 +101,7 @@ class Preprocess:
         images = np.stack([np.asarray(img, dtype=np.float32).transpose(2, 0, 1)
                            for img in images])
         labels = np.array([self.mapping.unicode_to_index(uni)
-                           if data['unicode'] is not None else -1
+                           if uni is not None else -1
                            for uni in seq['unicodes']], dtype=np.int32)
         none = np.empty((0, 3, 64, 64), dtype=np.float32)
         candidates = [none for _ in range(len(images))]
@@ -140,7 +140,7 @@ def prepare_dataset():
     train = TransformDataset(
         ConcatenatedDataset(
             RandomSampler(train_raw, 10000),
-            RandomSampler(val_masked_raw, 10000)
+            RandomSampler(val_masked_raw, 5000)
         ),
         Augmentation())
 
@@ -195,7 +195,7 @@ def main():
     train, val = prepare_dataset()
     train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize,
                                                         shared_mem=4000000)
-    val_iter = chainer.iterators.MultiprocessIterator(val, args.batchsize,
+    val_iter = chainer.iterators.MultiprocessIterator(val, args.batchsize // 2,
                                                       repeat=False,
                                                       shuffle=False,
                                                       shared_mem=4000000)

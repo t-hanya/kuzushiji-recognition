@@ -15,9 +15,10 @@ class TrainModel(chainer.Chain):
         super().__init__()
         with self.init_scope():
             self.model = model
-            self.fc_img = L.Linear(None, 512)
-            self.fc_ctx = L.Linear(None, 512)
-            self.fc_cls = L.Linear(None, 1)
+            self.fc1_img = L.Linear(None, 512)
+            self.fc1_ctx = L.Linear(None, 512)
+            self.fc2 = L.Linear(None, 256)
+            self.fc3 = L.Linear(None, 1)
 
         self.num_candidates = num_candidates
 
@@ -32,10 +33,11 @@ class TrainModel(chainer.Chain):
             embs_ctx += [embs_list[i][p] for p in positions]
         embs_ctx = F.stack(embs_ctx)
         embs_ctx = F.repeat(embs_ctx, self.num_candidates, axis=0)
-        h_ctx = self.fc_ctx(F.relu(embs_ctx))
-        h_img = self.fc_img(F.relu(embs_img))
+        h_ctx = self.fc1_ctx(F.relu(embs_ctx))
+        h_img = self.fc1_img(F.relu(embs_img))
         h = F.relu(F.concat([h_ctx, h_img]))
-        p = self.fc_cls(h).reshape(-1, self.num_candidates)
+        h = F.relu(self.fc2(h))
+        p = self.fc3(h).reshape(-1, self.num_candidates)
 
         gt = self.xp.zeros(len(p), dtype=self.xp.int32)
 

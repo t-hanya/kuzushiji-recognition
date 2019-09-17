@@ -11,7 +11,7 @@ import chainer.links as L
 class TrainModel(chainer.Chain):
     """train model."""
 
-    def __init__(self, model, num_candidates=4) -> None:
+    def __init__(self, model, num_candidates=2) -> None:
         super().__init__()
         with self.init_scope():
             self.model = model
@@ -19,9 +19,11 @@ class TrainModel(chainer.Chain):
             self.fc_ctx = L.Linear(None, 512)
             self.fc_cls = L.Linear(None, 1)
 
+        self.num_candidates = num_candidates
+
     def _mask_loss(self, embs_list, candidates, mask_positions):
         for cand in candidates:
-            assert all([len(d) in (0, 4) for d in cand])
+            assert all([len(d) in (0, self.num_candidates) for d in cand])
 
         imgs = F.concat([F.concat(l, axis=0) for l in candidates], axis=0)
         embs_img = self.model.cnn(imgs)
@@ -29,17 +31,16 @@ class TrainModel(chainer.Chain):
         for i, positions in enumerate(mask_positions):
             embs_ctx += [embs_list[i][p] for p in positions]
         embs_ctx = F.stack(embs_ctx)
-        embs_ctx = F.repeat(embs_ctx, 4, axis=0)  # repeat same value for 4 times
-                                                  # to compare with 4 candidates.
+        embs_ctx = F.repeat(embs_ctx, self.num_candidates, axis=0)
         h_ctx = self.fc_ctx(F.relu(embs_ctx))
         h_img = self.fc_img(F.relu(embs_img))
-        p = self.fc_cls(F.relu(F.concat([h_ctx, h_img]))).reshape(-1)
+        h = F.relu(F.concat([h_ctx, h_img]))
+        p = self.fc_cls(h).reshape(-1, self.num_candidates)
 
-        gt = self.xp.zeros((len(p)), dtype=self.xp.int32)
-        gt[0::4] = 1
+        gt = self.xp.zeros(len(p), dtype=self.xp.int32)
 
-        mask_loss = F.sigmoid_cross_entropy(p, gt)
-        mask_acc = F.binary_accuracy(p, gt)
+        mask_loss = F.softmax_cross_entropy(p, gt, ignore_label=-1)
+        mask_acc = F.accuracy(p, gt, ignore_label=-1)
         return mask_loss, mask_acc
 
     def forward(self, images, labels, candidates, mask_positions):

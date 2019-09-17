@@ -16,11 +16,13 @@ class KuzushijiMaskedSequenceGenerator(DatasetMixin):
 
     def __init__(self,
                  dataset: KuzushijiSequenceDataset,
-                 max_length: int = 16
+                 max_length: int = 16,
+                 num_candidates: int = 2
                 ) -> None:
         self.dataset = dataset
         self.max_length = max_length
         self.mask_prob = 0.15
+        self.num_candidates = num_candidates
 
     def __len__(self) -> int:
         return len(self.dataset)
@@ -64,7 +66,8 @@ class KuzushijiMaskedSequenceGenerator(DatasetMixin):
             }
 
         for img, uni in zip(sequence['images'], sequence['unicodes']):
-            if np.random.rand() <= self.mask_prob and len(other_chars) >= 4:
+            if (np.random.rand() <= self.mask_prob and
+                len(other_chars) >= self.num_candidates):
                 # sample image
                 v = np.random.rand()
                 if v < 0.2:
@@ -79,7 +82,8 @@ class KuzushijiMaskedSequenceGenerator(DatasetMixin):
                     tgt_uni = None
 
                 # sample candidates
-                candidates = [img] + [_random_pop(other_chars)[0] for _ in range(3)]
+                candidates = [img] + [_random_pop(other_chars)[0]
+                                      for _ in range(self.num_candidates - 1)]
                 ret.append({'image': src_img, 'candidates': candidates, 'unicode': tgt_uni})
             else:
                 ret.append({'image': img, 'candidates': None, 'unicode': uni})

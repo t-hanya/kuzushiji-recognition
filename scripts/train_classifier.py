@@ -7,6 +7,7 @@ import argparse
 import json
 from pathlib import Path
 
+import albumentations as alb
 import chainer
 import chainer.links as L
 from chainer import training
@@ -56,15 +57,34 @@ class Preprocess:
         self.image_size = image_size
         if augmentation:
             self.crop_func = RandomCropAndResize(size=image_size)
+            self.aug_func = alb.Compose([
+                alb.RGBShift(),
+                alb.RandomBrightnessContrast(),
+                alb.OneOf([
+                    alb.Rotate(limit=5),
+                    alb.GridDistortion(distort_limit=0.2),
+                ]),
+                alb.OneOf([
+                    alb.GaussNoise(),
+                    alb.IAAAdditiveGaussianNoise()
+                ])
+            ])
         else:
             self.crop_func = CenterCropAndResize(size=image_size)
+            self.aug_func = None
 
     def __call__(self, data):
         image = data['image']
         label = data['label']
 
         image = self.crop_func(image)
-        image = np.asarray(image, dtype=np.float32).transpose(2, 0, 1)
+        if self.aug_func:
+            image = np.asarray(image)
+            image = self.aug_func(image=image)['image']
+            image = image.astype(np.float32).transpose(2, 0, 1)
+        else:
+            image = np.asarray(image, dtype=np.float32).transpose(2, 0, 1)
+
         image = (image - 127.5) / 128.
         label = np.array(label, dtype=np.int32)
         return image, label

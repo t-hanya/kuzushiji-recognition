@@ -19,7 +19,7 @@ from PIL import Image
 import numpy as np
 
 
-from kr.classifier.softmax.model import MobileNetV3
+from kr.classifier.softmax.mobilenetv3 import MobileNetV3
 from kr.classifier.softmax.crop import CenterCropAndResize
 from kr.classifier.softmax.crop import RandomCropAndResize
 from kr.datasets import KuzushijiCharCropDataset

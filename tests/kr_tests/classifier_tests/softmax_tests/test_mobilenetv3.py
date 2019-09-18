@@ -6,7 +6,7 @@ Unittest for classification model.
 import numpy as np
 from PIL import Image
 
-from kr.classifier.softmax.model import MobileNetV3
+from kr.classifier.softmax.mobilenetv3 import MobileNetV3
 
 
 class TestMobileNetV3:

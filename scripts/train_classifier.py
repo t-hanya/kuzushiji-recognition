@@ -13,13 +13,14 @@ from chainer import training
 from chainer.training import extension
 from chainer.training import extensions
 from chainer.training import triggers
-from chainer.datasets import split_dataset
+from chainer.datasets import split_dataset_random
 from chainer.datasets import TransformDataset
 from PIL import Image
 import numpy as np
 
 
 from kr.classifier.softmax.mobilenetv3 import MobileNetV3
+from kr.classifier.softmax.resnet import Resnet18
 from kr.classifier.softmax.crop import CenterCropAndResize
 from kr.classifier.softmax.crop import RandomCropAndResize
 from kr.datasets import KuzushijiCharCropDataset
@@ -29,20 +30,22 @@ from kr.datasets import RandomSampler
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epoch', '-e', type=int, default=600,
+    parser.add_argument('--epoch', '-e', type=int, default=300,
                         help='Number of epochs to train')
-    parser.add_argument('--gpu', '-g', type=int, default=-1,
+    parser.add_argument('--gpu', '-g', type=int, default=0,
                         help='GPU ID (negative value indicates CPU)')
     parser.add_argument('--resume', '-r', type=str, default=None,
                         help='Resume from the specified snapshot')
     parser.add_argument('--out', '-o', default='result',
                         help='Output directory')
-    parser.add_argument('--batchsize', '-b', type=int, default=192,
+    parser.add_argument('--batchsize', '-b', type=int, default=512,
                         help='Validation minibatch size')
     parser.add_argument('--lr', '-l', type=float, default=0.1,
                         help='Learning rate')
     parser.add_argument('--weight-decay', '-w', type=float, default=1e-5,
                         help='Weight decay')
+    parser.add_argument('--model', choices=['resnet18', 'mobilenetv3'],
+                        default='resnet18', help='Backbone CNN model.')
     args = parser.parse_args()
     return args
 
@@ -66,19 +69,19 @@ class Preprocess:
         return image, label
 
 
-def prepare_dataset():
+def prepare_dataset(image_size=(64, 64)):
 
     train = TransformDataset(
         RandomSampler(
             KuzushijiCharCropDataset(split='train'),
             virtual_size=10000),
-        Preprocess(augmentation=True))
+        Preprocess(image_size=image_size, augmentation=True))
 
     val = TransformDataset(
-        split_dataset(
+        split_dataset_random(
             KuzushijiCharCropDataset(split='val'),
-            split_at=5000)[0],
-        Preprocess(augmentation=False))
+            first_size=5000, seed=0)[0],
+        Preprocess(image_size=image_size, augmentation=False))
 
     return train, val
 
@@ -110,20 +113,24 @@ def main():
     args = parse_args()
     dump_args(args)
 
-    train, val = prepare_dataset()
-    train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
-    val_iter = chainer.iterators.MultiprocessIterator(val, args.batchsize,
-                                                      repeat=False,
-                                                      shuffle=False)
-
     # setup model
     n_classes = len(KuzushijiUnicodeMapping())
-    model = MobileNetV3(n_classes)
+    if args.model == 'resnet18':
+        model = Resnet18(n_classes)
+    elif args.model == 'mobilenetv3':
+        model = MobileNetV3(n_classes)
     train_model = L.Classifier(model)
 
     if args.gpu >= 0:
         chainer.backends.cuda.get_device(args.gpu).use()
-        model.to_gpu()
+        train_model.to_gpu()
+
+    # setup dataset
+    train, val = prepare_dataset(image_size=model.input_size)
+    train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
+    val_iter = chainer.iterators.MultiprocessIterator(val, args.batchsize,
+                                                      repeat=False,
+                                                      shuffle=False)
 
     # setup optimizer
     optimizer = chainer.optimizers.NesterovAG(lr=args.lr, momentum=0.9)
@@ -136,9 +143,9 @@ def main():
 
     trainer.extend(extensions.Evaluator(val_iter, train_model,
                                         device=args.gpu))
-    trainer.extend(extensions.snapshot(), trigger=(10, 'epoch'))
+    trainer.extend(extensions.snapshot(), trigger=(100, 'epoch'))
     trainer.extend(extensions.snapshot_object(
-                   model, 'model_{.updater.epoch}.npz'), trigger=(10, 'epoch'))
+                   model, 'model_{.updater.epoch}.npz'), trigger=(100, 'epoch'))
     trainer.extend(extensions.LogReport())
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss',

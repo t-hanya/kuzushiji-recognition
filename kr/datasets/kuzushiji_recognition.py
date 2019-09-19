@@ -5,7 +5,6 @@ Kuzushiji dataset
 
 import json
 from pathlib import Path
-import random
 from typing import Optional
 
 from chainer.dataset import DatasetMixin
@@ -126,19 +125,6 @@ class KuzushijiCharCropDataset(DatasetMixin):
         data['image'] = Image.open(self.dir_path / data['image_path'])
         data['label'] = self.mapping.unicode_to_index(data['unicode'])
         return data
-
-
-class RandomSampler(DatasetMixin):
-
-    def __init__(self, dataset, virtual_size=10000):
-        self.dataset = dataset
-        self.virtual_size = virtual_size
-
-    def __len__(self):
-        return self.virtual_size
-
-    def get_example(self, i):
-        return random.choice(self.dataset)
 
 
 class KuzushijiTestImages(DatasetMixin):

@@ -119,6 +119,10 @@ class KuzushijiCharCropDataset(DatasetMixin):
             [self.mapping.unicode_to_index(d['unicode']) for d in self.data],
             dtype=np.int32)
 
+        self.num_samples = np.zeros(len(self.mapping), dtype=np.int32)
+        for label in self.all_labels:
+            self.num_samples[label] += 1
+
     def __len__(self) -> int:
         return len(self.data)
 

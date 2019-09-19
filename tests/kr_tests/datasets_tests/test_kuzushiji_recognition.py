@@ -74,6 +74,12 @@ class TestKuzushijiCharCropDataset:
         assert type(dataset.all_labels) == np.ndarray
         assert len(dataset) == len(dataset.all_labels)
 
+    def test_num_samples_property(self):
+        dataset = KuzushijiCharCropDataset()
+        mapping = KuzushijiUnicodeMapping()
+        assert type(dataset.num_samples) == np.ndarray
+        assert len(dataset.num_samples) == len(mapping)
+
 
 class TestKuzushijiTestImages:
 

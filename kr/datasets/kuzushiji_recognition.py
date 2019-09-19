@@ -14,7 +14,7 @@ import pandas as pd
 from PIL import Image
 
 
-_prj_root = Path(__file__).resolve().parent.parent
+_prj_root = Path(__file__).resolve().parent.parent.parent
 _dataset_dir = _prj_root / 'data' / 'kuzushiji-recognition'
 _converted_dir = _prj_root / 'data' / 'kuzushiji-recognition-converted'
 _gsplit_dir = _prj_root / 'data' / 'kuzushiji-recognition-gsplit'

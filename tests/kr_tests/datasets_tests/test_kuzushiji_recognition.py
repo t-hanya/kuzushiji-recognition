@@ -69,6 +69,11 @@ class TestKuzushijiCharCropDataset:
         if expected_size is not None:
             assert len(dataset) == expected_size
 
+    def test_all_labels_property(self):
+        dataset = KuzushijiCharCropDataset()
+        assert type(dataset.all_labels) == np.ndarray
+        assert len(dataset) == len(dataset.all_labels)
+
 
 class TestKuzushijiTestImages:
 

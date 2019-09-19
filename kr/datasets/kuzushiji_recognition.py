@@ -115,6 +115,9 @@ class KuzushijiCharCropDataset(DatasetMixin):
         self.dir_path = _gsplit_dir
         self.data = annt['annotations']
         self.mapping = KuzushijiUnicodeMapping()
+        self.all_labels = np.array(
+            [self.mapping.unicode_to_index(d['unicode']) for d in self.data],
+            dtype=np.int32)
 
     def __len__(self) -> int:
         return len(self.data)

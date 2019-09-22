@@ -42,7 +42,7 @@ def parse_args():
                         help='Validation minibatch size')
     parser.add_argument('--lr', '-l', type=float, default=0.1,
                         help='Learning rate')
-    parser.add_argument('--weight-decay', '-w', type=float, default=1e-5,
+    parser.add_argument('--weight-decay', '-w', type=float, default=1e-4,
                         help='Weight decay')
     parser.add_argument('--model', choices=['resnet18', 'mobilenetv3'],
                         default='resnet18', help='Backbone CNN model.')

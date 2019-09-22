@@ -60,3 +60,36 @@ class CutmixSoftLabelDataset(DatasetMixin):
             label = np.zeros(self.n_class, dtype=np.float32)
             label[label1] = 1
             return img1, label
+
+
+class MixupSoftLabelDataset(DatasetMixin):
+    """MixUp soft label dataset."""
+
+    def __init__(self, dataset: Sequence, n_class: int,
+                 alpha: float = 0.2, prob: float = 1.0) -> None:
+        self.dataset = dataset
+        self.n_class = n_class
+        self.alpha = alpha
+        self.prob = prob
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def get_example(self, i) -> Tuple[np.ndarray, np.ndarray]:
+        if np.random.rand() <= self.prob:
+            img1, label1 = self.dataset[i]
+            img2, label2 = random.choice(self.dataset)
+            ratio = np.random.beta(self.alpha, self.alpha)
+            img = ratio * img1 + (1 - ratio) * img2
+
+            label = np.zeros(self.n_class, dtype=np.float32)
+            label[label1] += ratio
+            label[label2] += 1 - ratio
+
+            return img, label
+
+        else:
+            img1, label1 = self.dataset[i]
+            label = np.zeros(self.n_class, dtype=np.float32)
+            label[label1] = 1
+            return img1, label

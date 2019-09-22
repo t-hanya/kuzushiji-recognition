@@ -29,26 +29,34 @@ def _sample_bbox(w: int, h: int, ratio: float) -> Tuple[int, int, int, int]:
 class CutmixSoftLabelDataset(DatasetMixin):
     """CutMix soft label dataset."""
 
-    def __init__(self, dataset: Sequence, n_class: int) -> None:
+    def __init__(self, dataset: Sequence, n_class: int, prob: float = 1.0) -> None:
         self.dataset = dataset
         self.n_class = n_class
+        self.prob = prob
 
     def __len__(self) -> int:
         return len(self.dataset)
 
     def get_example(self, i) -> Tuple[np.ndarray, np.ndarray]:
-        img1, label1 = self.dataset[i]
-        img2, label2 = random.choice(self.dataset)
+        if np.random.rand() <= self.prob:
+            img1, label1 = self.dataset[i]
+            img2, label2 = random.choice(self.dataset)
 
-        h, w = img1.shape[1:]
-        raw_ratio = np.random.uniform(0, 1)
-        x1, y1, x2, y2 = _sample_bbox(w, h, raw_ratio)
+            h, w = img1.shape[1:]
+            raw_ratio = np.random.uniform(0, 1)
+            x1, y1, x2, y2 = _sample_bbox(w, h, raw_ratio)
 
-        img = img1.copy()
-        img[:, y1:y2, x1:x2] = img2[:, y1:y2, x1:x2]
-        ratio = 1 - (x2 - x1) * (y2 - y1) / (w * h)
-        label = np.zeros(self.n_class, dtype=np.float32)
-        label[label1] += ratio
-        label[label2] += 1 - ratio
+            img = img1.copy()
+            img[:, y1:y2, x1:x2] = img2[:, y1:y2, x1:x2]
+            ratio = 1 - (x2 - x1) * (y2 - y1) / (w * h)
+            label = np.zeros(self.n_class, dtype=np.float32)
+            label[label1] += ratio
+            label[label2] += 1 - ratio
 
-        return img, label
+            return img, label
+
+        else:
+            img1, label1 = self.dataset[i]
+            label = np.zeros(self.n_class, dtype=np.float32)
+            label[label1] = 1
+            return img1, label

@@ -4,3 +4,4 @@ from kr.datasets.kuzushiji_recognition import KuzushijiCharCropDataset
 from kr.datasets.kuzushiji_recognition import KuzushijiTestImages
 from kr.datasets.sampling import RandomSampler
 from kr.datasets.sampling import OverSampler
+from kr.datasets.cutmix import CutmixSoftLabelDataset

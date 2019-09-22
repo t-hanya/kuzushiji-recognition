@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 import chainer
+import chainer.functions as F
 import chainer.links as L
 from chainer import training
 from chainer.training import extension
@@ -26,6 +27,7 @@ from kr.classifier.softmax.crop import RandomCropAndResize
 from kr.datasets import KuzushijiCharCropDataset
 from kr.datasets import KuzushijiUnicodeMapping
 from kr.datasets import RandomSampler
+from kr.datasets import CutmixSoftLabelDataset
 
 
 def parse_args():
@@ -48,6 +50,26 @@ def parse_args():
                         default='resnet18', help='Backbone CNN model.')
     args = parser.parse_args()
     return args
+
+
+class CutmixClassifier(chainer.Chain):
+
+    def __init__(self, model):
+        super().__init__()
+        with self.init_scope():
+            self.model = model
+
+    def forward(self, imgs, labels):
+        logits = self.model(imgs)
+
+        if chainer.config.train:
+            loss = -F.sum(labels * F.log_softmax(logits)) / len(imgs)
+            acc = F.accuracy(logits, self.xp.argmax(labels, axis=1))
+        else:
+            loss = F.softmax_cross_entropy(logits, labels)
+            acc = F.accuracy(logits, labels)
+        chainer.report({'loss': loss, 'accuracy': acc}, self)
+        return loss
 
 
 class Preprocess:
@@ -76,6 +98,9 @@ def prepare_dataset(image_size=(64, 64)):
             KuzushijiCharCropDataset(split='train'),
             virtual_size=10000),
         Preprocess(image_size=image_size, augmentation=True))
+
+    train = CutmixSoftLabelDataset(
+        train, n_class=len(KuzushijiUnicodeMapping()), prob=0.5)
 
     val = TransformDataset(
         split_dataset_random(
@@ -119,7 +144,7 @@ def main():
         model = Resnet18(n_classes)
     elif args.model == 'mobilenetv3':
         model = MobileNetV3(n_classes)
-    train_model = L.Classifier(model)
+    train_model = CutmixClassifier(model)
 
     if args.gpu >= 0:
         chainer.backends.cuda.get_device(args.gpu).use()

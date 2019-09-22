@@ -65,6 +65,7 @@ class Preprocess:
 
         image = self.crop_func(image)
         image = np.asarray(image, dtype=np.float32).transpose(2, 0, 1)
+        image = (image - 127.5) / 128.
         label = np.array(label, dtype=np.int32)
         return image, label
 

@@ -42,6 +42,7 @@ class SoftmaxClassifierBase(chainer.Chain):
         if self.xp != np:
             img_arr = cuda.to_gpu(img_arr)
 
+        img_arr = (img_arr - 127.5) / 128.
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             probs = F.softmax(self(img_arr)).array
 

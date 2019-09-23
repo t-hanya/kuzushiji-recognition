@@ -22,6 +22,7 @@ import numpy as np
 
 from kr.classifier.softmax.mobilenetv3 import MobileNetV3
 from kr.classifier.softmax.resnet import Resnet18
+from kr.classifier.softmax.resnet import Resnet34
 from kr.classifier.softmax.crop import CenterCropAndResize
 from kr.classifier.softmax.crop import RandomCropAndResize
 from kr.datasets import KuzushijiCharCropDataset
@@ -45,7 +46,7 @@ def parse_args():
                         help='Learning rate')
     parser.add_argument('--weight-decay', '-w', type=float, default=1e-4,
                         help='Weight decay')
-    parser.add_argument('--model', choices=['resnet18', 'mobilenetv3'],
+    parser.add_argument('--model', choices=['resnet18', 'resnet34', 'mobilenetv3'],
                         default='resnet18', help='Backbone CNN model.')
     args = parser.parse_args()
     return args
@@ -142,6 +143,8 @@ def main():
     n_classes = len(KuzushijiUnicodeMapping())
     if args.model == 'resnet18':
         model = Resnet18(n_classes)
+    elif args.model == 'resnet34':
+        model = Resnet34(n_classes)
     elif args.model == 'mobilenetv3':
         model = MobileNetV3(n_classes)
     train_model = L.Classifier(model)

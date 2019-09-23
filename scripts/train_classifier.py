@@ -48,6 +48,8 @@ def parse_args():
                         help='Weight decay')
     parser.add_argument('--model', choices=['resnet18', 'resnet34', 'mobilenetv3'],
                         default='resnet18', help='Backbone CNN model.')
+    parser.add_argument('--full-data', '-F', action='store_true', default=False,
+                        help='Flag to use all training dataset.')
     args = parser.parse_args()
     return args
 
@@ -95,11 +97,12 @@ class Preprocess:
         return image, label
 
 
-def prepare_dataset(image_size=(64, 64)):
+def prepare_dataset(image_size=(64, 64), full_data=False):
 
+    train_split = 'trainval' if full_data else 'train'
     train = TransformDataset(
         RandomSampler(
-            KuzushijiCharCropDataset(split='train'),
+            KuzushijiCharCropDataset(split=train_split),
             virtual_size=10000),
         Preprocess(image_size=image_size, augmentation=True))
 
@@ -154,7 +157,8 @@ def main():
         train_model.to_gpu()
 
     # setup dataset
-    train, val = prepare_dataset(image_size=model.input_size)
+    train, val = prepare_dataset(image_size=model.input_size,
+                                 full_data=args.full_data)
     train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
     val_iter = chainer.iterators.MultiprocessIterator(val, args.batchsize,
                                                       repeat=False,

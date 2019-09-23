@@ -57,6 +57,7 @@ class Preprocess:
         self.image_size = image_size
         if augmentation:
             self.crop_func = RandomCropAndResize(size=image_size)
+            w, h = image_size
             self.aug_func = alb.Compose([
                 alb.RGBShift(),
                 alb.RandomBrightnessContrast(),
@@ -67,7 +68,10 @@ class Preprocess:
                 alb.OneOf([
                     alb.GaussNoise(),
                     alb.IAAAdditiveGaussianNoise()
-                ])
+                ]),
+                alb.CoarseDropout(
+                    max_holes=1, max_height=h // 2, max_width=w // 2,
+                    min_height=h // 4, min_width=w // 4, fill_value=128)
             ])
         else:
             self.crop_func = CenterCropAndResize(size=image_size)

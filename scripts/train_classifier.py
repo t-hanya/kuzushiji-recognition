@@ -103,7 +103,7 @@ def prepare_dataset(image_size=(64, 64), full_data=False):
     train = TransformDataset(
         RandomSampler(
             KuzushijiCharCropDataset(split=train_split),
-            virtual_size=10000),
+            virtual_size=20000),
         Preprocess(image_size=image_size, augmentation=True))
 
     val = TransformDataset(

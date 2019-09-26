@@ -7,19 +7,22 @@ import argparse
 import json
 from pathlib import Path
 
+import albumentations as alb
 import chainer
 import chainer.links as L
 from chainer import training
 from chainer.training import extension
 from chainer.training import extensions
 from chainer.training import triggers
-from chainer.datasets import split_dataset
+from chainer.datasets import split_dataset_random
 from chainer.datasets import TransformDataset
 from PIL import Image
 import numpy as np
 
 
-from kr.classifier.softmax.model import MobileNetV3
+from kr.classifier.softmax.mobilenetv3 import MobileNetV3
+from kr.classifier.softmax.resnet import Resnet18
+from kr.classifier.softmax.resnet import Resnet34
 from kr.classifier.softmax.crop import CenterCropAndResize
 from kr.classifier.softmax.crop import RandomCropAndResize
 from kr.datasets import KuzushijiCharCropDataset
@@ -29,20 +32,24 @@ from kr.datasets import RandomSampler
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epoch', '-e', type=int, default=600,
+    parser.add_argument('--epoch', '-e', type=int, default=500,
                         help='Number of epochs to train')
-    parser.add_argument('--gpu', '-g', type=int, default=-1,
+    parser.add_argument('--gpu', '-g', type=int, default=0,
                         help='GPU ID (negative value indicates CPU)')
     parser.add_argument('--resume', '-r', type=str, default=None,
                         help='Resume from the specified snapshot')
     parser.add_argument('--out', '-o', default='result',
                         help='Output directory')
-    parser.add_argument('--batchsize', '-b', type=int, default=192,
+    parser.add_argument('--batchsize', '-b', type=int, default=512,
                         help='Validation minibatch size')
     parser.add_argument('--lr', '-l', type=float, default=0.1,
                         help='Learning rate')
-    parser.add_argument('--weight-decay', '-w', type=float, default=1e-5,
+    parser.add_argument('--weight-decay', '-w', type=float, default=1e-4,
                         help='Weight decay')
+    parser.add_argument('--model', choices=['resnet18', 'resnet34', 'mobilenetv3'],
+                        default='resnet18', help='Backbone CNN model.')
+    parser.add_argument('--full-data', '-F', action='store_true', default=False,
+                        help='Flag to use all training dataset.')
     args = parser.parse_args()
     return args
 
@@ -53,32 +60,57 @@ class Preprocess:
         self.image_size = image_size
         if augmentation:
             self.crop_func = RandomCropAndResize(size=image_size)
+            w, h = image_size
+            self.aug_func = alb.Compose([
+                alb.RGBShift(),
+                alb.RandomBrightnessContrast(),
+                alb.OneOf([
+                    alb.Rotate(limit=5),
+                    alb.GridDistortion(distort_limit=0.2),
+                ]),
+                alb.OneOf([
+                    alb.GaussNoise(),
+                    alb.IAAAdditiveGaussianNoise()
+                ]),
+                alb.CoarseDropout(
+                    max_holes=1, max_height=h // 2, max_width=w // 2,
+                    min_height=h // 4, min_width=w // 4, fill_value=128)
+            ])
         else:
             self.crop_func = CenterCropAndResize(size=image_size)
+            self.aug_func = None
 
     def __call__(self, data):
         image = data['image']
         label = data['label']
 
         image = self.crop_func(image)
-        image = np.asarray(image, dtype=np.float32).transpose(2, 0, 1)
+        if self.aug_func:
+            image = np.asarray(image)
+            image = self.aug_func(image=image)['image']
+            image = image.astype(np.float32).transpose(2, 0, 1)
+        else:
+            image = np.asarray(image, dtype=np.float32).transpose(2, 0, 1)
+
+        image = (image - 127.5) / 128.
         label = np.array(label, dtype=np.int32)
         return image, label
 
 
-def prepare_dataset():
+def prepare_dataset(image_size=(64, 64), full_data=False):
 
+    train_split = 'trainval' if full_data else 'train'
     train = TransformDataset(
         RandomSampler(
-            KuzushijiCharCropDataset(split='train'),
-            virtual_size=10000),
-        Preprocess(augmentation=True))
+            KuzushijiCharCropDataset(split=train_split),
+            virtual_size=20000),
+        Preprocess(image_size=image_size, augmentation=True))
 
     val = TransformDataset(
-        split_dataset(
+        split_dataset_random(
             KuzushijiCharCropDataset(split='val'),
-            split_at=5000)[0],
-        Preprocess(augmentation=False))
+            first_size=5000, seed=0)[0],
+        Preprocess(image_size=image_size, augmentation=False))
 
     return train, val
 
@@ -110,20 +142,27 @@ def main():
     args = parse_args()
     dump_args(args)
 
-    train, val = prepare_dataset()
-    train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
-    val_iter = chainer.iterators.MultiprocessIterator(val, args.batchsize,
-                                                      repeat=False,
-                                                      shuffle=False)
-
     # setup model
     n_classes = len(KuzushijiUnicodeMapping())
-    model = MobileNetV3(n_classes)
+    if args.model == 'resnet18':
+        model = Resnet18(n_classes)
+    elif args.model == 'resnet34':
+        model = Resnet34(n_classes)
+    elif args.model == 'mobilenetv3':
+        model = MobileNetV3(n_classes)
     train_model = L.Classifier(model)
 
     if args.gpu >= 0:
         chainer.backends.cuda.get_device(args.gpu).use()
-        model.to_gpu()
+        train_model.to_gpu()
+
+    # setup dataset
+    train, val = prepare_dataset(image_size=model.input_size,
+                                 full_data=args.full_data)
+    train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
+    val_iter = chainer.iterators.MultiprocessIterator(val, args.batchsize,
+                                                      repeat=False,
+                                                      shuffle=False)
 
     # setup optimizer
     optimizer = chainer.optimizers.NesterovAG(lr=args.lr, momentum=0.9)
@@ -136,9 +175,9 @@ def main():
 
     trainer.extend(extensions.Evaluator(val_iter, train_model,
                                         device=args.gpu))
-    trainer.extend(extensions.snapshot(), trigger=(10, 'epoch'))
+    trainer.extend(extensions.snapshot(), trigger=(100, 'epoch'))
     trainer.extend(extensions.snapshot_object(
-                   model, 'model_{.updater.epoch}.npz'), trigger=(10, 'epoch'))
+                   model, 'model_{.updater.epoch}.npz'), trigger=(100, 'epoch'))
     trainer.extend(extensions.LogReport())
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss',

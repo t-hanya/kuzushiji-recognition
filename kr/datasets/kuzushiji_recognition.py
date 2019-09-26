@@ -5,7 +5,6 @@ Kuzushiji dataset
 
 import json
 from pathlib import Path
-import random
 from typing import Optional
 
 from chainer.dataset import DatasetMixin
@@ -14,7 +13,7 @@ import pandas as pd
 from PIL import Image
 
 
-_prj_root = Path(__file__).resolve().parent.parent
+_prj_root = Path(__file__).resolve().parent.parent.parent
 _dataset_dir = _prj_root / 'data' / 'kuzushiji-recognition'
 _converted_dir = _prj_root / 'data' / 'kuzushiji-recognition-converted'
 _gsplit_dir = _prj_root / 'data' / 'kuzushiji-recognition-gsplit'
@@ -116,6 +115,13 @@ class KuzushijiCharCropDataset(DatasetMixin):
         self.dir_path = _gsplit_dir
         self.data = annt['annotations']
         self.mapping = KuzushijiUnicodeMapping()
+        self.all_labels = np.array(
+            [self.mapping.unicode_to_index(d['unicode']) for d in self.data],
+            dtype=np.int32)
+
+        self.num_samples = np.zeros(len(self.mapping), dtype=np.int32)
+        for label in self.all_labels:
+            self.num_samples[label] += 1
 
     def __len__(self) -> int:
         return len(self.data)
@@ -126,19 +132,6 @@ class KuzushijiCharCropDataset(DatasetMixin):
         data['image'] = Image.open(self.dir_path / data['image_path'])
         data['label'] = self.mapping.unicode_to_index(data['unicode'])
         return data
-
-
-class RandomSampler(DatasetMixin):
-
-    def __init__(self, dataset, virtual_size=10000):
-        self.dataset = dataset
-        self.virtual_size = virtual_size
-
-    def __len__(self):
-        return self.virtual_size
-
-    def get_example(self, i):
-        return random.choice(self.dataset)
 
 
 class KuzushijiTestImages(DatasetMixin):

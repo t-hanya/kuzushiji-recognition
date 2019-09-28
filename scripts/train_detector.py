@@ -20,6 +20,7 @@ from PIL import Image
 import numpy as np
 
 from kr.detector.centernet.model import UnetCenterNet
+from kr.detector.centernet.resnet import Res18UnetCenterNet
 from kr.detector.centernet.training import TrainingModel
 from kr.detector.centernet.heatmap import generate_heatmap
 from kr.detector.centernet.crop import RandomCropAndResize
@@ -39,6 +40,8 @@ def parse_args():
                         help='Validation minibatch size')
     parser.add_argument('--resume', '-r', default='',
                             help='Initialize the trainer from given file')
+    parser.add_argument('--model', choices=('unet', 'res18unet'),
+                        default='res18unet')
     args = parser.parse_args()
     return args
 
@@ -147,7 +150,11 @@ def main():
                                                       shared_mem=4000000)
 
     # setup model
-    model = UnetCenterNet()
+    if args.model == 'unet':
+        model = UnetCenterNet()
+    elif args.model == 'res18unet':
+        model = Res18UnetCenterNet()
+
     training_model = TrainingModel(model)
     if args.gpu >= 0:
         chainer.backends.cuda.get_device_from_id(args.gpu).use()

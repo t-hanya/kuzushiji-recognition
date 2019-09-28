@@ -25,6 +25,7 @@ from kr.detector.centernet.training import TrainingModel
 from kr.detector.centernet.heatmap import generate_heatmap
 from kr.detector.centernet.crop import RandomCropAndResize
 from kr.detector.centernet.crop import CenterCropAndResize
+from kr.detector.extensions import DetectionMapEvaluator
 from kr.datasets import KuzushijiRecognitionDataset
 
 
@@ -93,13 +94,15 @@ def prepare_dataset():
         KuzushijiRecognitionDataset('train'),
         Preprocessor(augmentation=True))
 
+    val_raw = split_dataset_random(
+        KuzushijiRecognitionDataset('val'),
+        first_size=16 * 10, seed=0)[0]
+
     val = TransformDataset(
-        split_dataset_random(
-            KuzushijiRecognitionDataset('val'),
-            first_size=16 * 10, seed=0)[0],
+        val_raw,
         Preprocessor(augmentation=False))
 
-    return train, val
+    return train, val, val_raw
 
 
 def converter(batch, gpu_id=-1):
@@ -143,13 +146,17 @@ def main():
     dump_args(args)
 
     # prepare dataset
-    train, val = prepare_dataset()
+    train, val, val_raw = prepare_dataset()
     train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize,
                                                         shared_mem=4000000)
     val_iter = chainer.iterators.MultiprocessIterator(val, args.batchsize,
                                                       repeat=False,
                                                       shuffle=False,
                                                       shared_mem=4000000)
+    eval_iter = chainer.iterators.MultiprocessIterator(val_raw, 4,
+                                                       repeat=False,
+                                                       shuffle=False,
+                                                       shared_mem=4000000)
 
     # setup model
     if args.model == 'unet':
@@ -179,12 +186,14 @@ def main():
     trainer.extend(extensions.Evaluator(val_iter, training_model,
                                         device=args.gpu,
                                         converter=converter))
+    trainer.extend(DetectionMapEvaluator(eval_iter, model))
+
     trainer.extend(extensions.snapshot_object(
                    model, 'model_{.updater.epoch}.npz'), trigger=(10, 'epoch'))
     trainer.extend(extensions.snapshot(), trigger=(10, 'epoch'))
     trainer.extend(extensions.LogReport())
     trainer.extend(extensions.PrintReport(
-        ['epoch', 'main/loss', 'validation/main/loss']))
+        ['epoch', 'main/loss', 'validation/main/loss', 'eval/main/map']))
     trainer.extend(extensions.ProgressBar(update_interval=10))
 
     # learning rate scheduling

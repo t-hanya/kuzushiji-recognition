@@ -94,7 +94,9 @@ def prepare_dataset():
         Preprocessor(augmentation=True))
 
     val = TransformDataset(
-        KuzushijiRecognitionDataset('val'),
+        split_dataset_random(
+            KuzushijiRecognitionDataset('val'),
+            first_size=16 * 10, seed=0)[0],
         Preprocessor(augmentation=False))
 
     return train, val

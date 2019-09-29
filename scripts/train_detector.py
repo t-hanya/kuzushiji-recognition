@@ -8,6 +8,7 @@ import argparse
 import json
 from pathlib import Path
 
+import albumentations as alb
 import chainer
 from chainer.backends import cuda
 from chainer import training
@@ -58,9 +59,23 @@ class Preprocessor:
 
         if augmentation:
             self.crop_func = RandomCropAndResize(scale_range, input_size)
+            self.aug_func = alb.Compose([
+                alb.OneOf([
+                    alb.RGBShift(),
+                    alb.ToGray(),
+                    alb.NoOp(),
+                ]),
+                alb.RandomBrightnessContrast(),
+                alb.OneOf([
+                    alb.GaussNoise(),
+                    alb.IAAAdditiveGaussianNoise(),
+                    alb.CoarseDropout(fill_value=100),
+                ])
+            ])
         else:
             scale = (scale_range[0] + scale_range[1]) / 2.
             self.crop_func = CenterCropAndResize(scale, input_size)
+            self.aug_func = None
 
         self.heatmap_stride = 4
         self.heatmap_size = (input_size[0] // self.heatmap_stride,
@@ -76,8 +91,10 @@ class Preprocessor:
             data['image'], data['bboxes'], data['unicodes'])
 
         # prepare image
-        image = np.asarray(image, dtype=np.float32)
-        image = image.transpose(2, 0, 1)
+        image = np.asarray(image)
+        if self.aug_func:
+            image = self.aug_func(image=image)['image']
+        image = image.transpose(2, 0, 1).astype(np.float32)
         image = (image - 127.5) / 128.0
 
         # prepare training target

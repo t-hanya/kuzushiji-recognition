@@ -43,6 +43,8 @@ def parse_args():
                             help='Initialize the trainer from given file')
     parser.add_argument('--model', choices=('unet', 'res18unet'),
                         default='res18unet')
+    parser.add_argument('--full-data', '-F', action='store_true', default=False,
+                        help='Flag to use all training dataset.')
     args = parser.parse_args()
     return args
 
@@ -89,10 +91,11 @@ class Preprocessor:
         return image, heatmap, labels, indices
 
 
-def prepare_dataset():
+def prepare_dataset(full_data=False):
 
+    train_split = 'trainval' if full_data else 'train'
     train = TransformDataset(
-        KuzushijiRecognitionDataset('train'),
+        KuzushijiRecognitionDataset(split=train_split),
         Preprocessor(augmentation=True))
 
     val_raw = split_dataset_random(
@@ -147,7 +150,7 @@ def main():
     dump_args(args)
 
     # prepare dataset
-    train, val, val_raw = prepare_dataset()
+    train, val, val_raw = prepare_dataset(full_data=args.full_data)
     train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize,
                                                         shared_mem=4000000)
     val_iter = chainer.iterators.MultiprocessIterator(val, args.batchsize,

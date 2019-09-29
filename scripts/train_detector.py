@@ -76,6 +76,7 @@ class Preprocessor:
         # prepare image
         image = np.asarray(image, dtype=np.float32)
         image = image.transpose(2, 0, 1)
+        image = (image - 127.5) / 128.0
 
         # prepare training target
         labels = np.zeros(len(bboxes), dtype=np.int32)

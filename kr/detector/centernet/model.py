@@ -111,6 +111,7 @@ class UnetCenterNet(chainer.Chain):
         if self.xp != np:
             imgs = cuda.to_gpu(imgs)
 
+        imgs = (imgs - 127.5) / 128.0
         with chainer.using_config('train', False), chainer.no_backprop_mode():
 
             heatmap = self(imgs)

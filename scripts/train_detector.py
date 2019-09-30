@@ -187,17 +187,22 @@ def main():
                                out=args.out)
 
     # set trainer extensions
-    trainer.extend(extensions.Evaluator(val_iter, training_model,
-                                        device=args.gpu,
-                                        converter=converter))
-    trainer.extend(DetectionMapEvaluator(eval_iter, model))
+    if not args.full_data:
+        trainer.extend(extensions.Evaluator(val_iter, training_model,
+                                            device=args.gpu,
+                                            converter=converter))
+        trainer.extend(DetectionMapEvaluator(eval_iter, model))
 
     trainer.extend(extensions.snapshot_object(
                    model, 'model_{.updater.epoch}.npz'), trigger=(10, 'epoch'))
     trainer.extend(extensions.snapshot(), trigger=(10, 'epoch'))
     trainer.extend(extensions.LogReport())
-    trainer.extend(extensions.PrintReport(
-        ['epoch', 'main/loss', 'validation/main/loss', 'eval/main/map']))
+    if args.full_data:
+        trainer.extend(extensions.PrintReport(
+            ['epoch', 'main/loss']))
+    else:
+        trainer.extend(extensions.PrintReport(
+            ['epoch', 'main/loss', 'validation/main/loss', 'eval/main/map']))
     trainer.extend(extensions.ProgressBar(update_interval=10))
 
     # learning rate scheduling

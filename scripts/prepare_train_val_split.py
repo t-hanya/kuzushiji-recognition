@@ -33,8 +33,8 @@ if __name__ == '__main__':
 
     image_paths = sorted(TRAINVAL_IMAGE_DIR.iterdir())
     book_titles = sorted(set([extract_book_title(p) for p in image_paths]))
-    group_labels = group_labels = [book_titles.index(extract_book_title(p))
-                                   for p in image_paths]
+    group_labels = [book_titles.index(extract_book_title(p))
+                    for p in image_paths]
 
     table = pd.read_csv(str(TRAINVAL_CSV))
 

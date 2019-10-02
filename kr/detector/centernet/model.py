@@ -25,7 +25,7 @@ class UnetCenterNet(chainer.Chain):
     """U-Net like encoder-decoder model."""
 
     stride: int = 4
-    image_size: int = (832, 832)  # w, h
+    image_min_side: int = 832
 
     def __init__(self, n_fg_class: int = 1) -> None:
         super().__init__()
@@ -102,8 +102,17 @@ class UnetCenterNet(chainer.Chain):
               ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Detect characters from the image."""
         img_w, img_h = image.size
-        image = image.resize(self.image_size,
-                             resample=Image.BILINEAR)
+
+        if img_w < img_h:
+            w = self.image_min_side
+            h = img_h * self.image_min_side / img_w
+            h = 32 * int(round(h / 32))
+        else:
+            h = self.image_min_side
+            w = img_w * self.image_min_side / img_h
+            w = 32 * int(round(w / 32))
+
+        image = image.resize((w, h), resample=Image.BILINEAR)
 
         img = np.asarray(image, dtype=np.float32).transpose(2, 0, 1)
         imgs = img.reshape(1, *img.shape)
@@ -111,6 +120,7 @@ class UnetCenterNet(chainer.Chain):
         if self.xp != np:
             imgs = cuda.to_gpu(imgs)
 
+        imgs = (imgs - 127.5) / 128.0
         with chainer.using_config('train', False), chainer.no_backprop_mode():
 
             heatmap = self(imgs)
@@ -118,7 +128,7 @@ class UnetCenterNet(chainer.Chain):
             heatmap[:-4] = _sigmoid(heatmap[:-4])
 
         bboxes, _, scores = heatmap_to_labeled_bboxes(heatmap,
-                                                           score_threshold)
+                                                      score_threshold)
         bboxes, scores = bboxes[0], scores[0]
 
         hm_h, hm_w = heatmap.shape[2:4]

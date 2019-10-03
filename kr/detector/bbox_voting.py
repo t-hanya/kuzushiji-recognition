@@ -59,7 +59,7 @@ class BboxVoting:
 
         # apply NMS to obtain base bounding boxes for refinement
         keep = non_maximum_suppression(all_bboxes,
-                                       thresh=0.5,
+                                       thresh=0.3,
                                        score=all_scores)
         base_bboxes = all_bboxes[keep]
         base_scores = all_scores[keep]

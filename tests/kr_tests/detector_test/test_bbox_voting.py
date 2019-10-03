@@ -44,3 +44,17 @@ class TestBboxVoting:
 
         assert np.isclose(bboxes, expected_bboxes).all()
         assert np.isclose(scores, expected_scores).all()
+
+    def test_min_votes(self):
+        image = Image.new('RGB', (300, 300))
+        expected_bboxes = np.array([[20.5, 20.5, 30, 30]], dtype=np.float32)
+        expected_scores = np.array([0.8], dtype=np.float32)
+
+        detector = BboxVoting([
+            DetectorA(),
+            DetectorB()
+        ], min_votes=2)
+        bboxes, scores = detector.detect(image)
+
+        assert np.isclose(bboxes, expected_bboxes).all()
+        assert np.isclose(scores, expected_scores).all()

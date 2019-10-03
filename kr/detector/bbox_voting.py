@@ -39,8 +39,9 @@ def calc_iou_mat(bboxes1, bboxes2):
 class BboxVoting:
     """Detector wrapper to implement bounding box voting."""
 
-    def __init__(self, detectors):
+    def __init__(self, detectors, min_votes: int = 1):
         self.detectors = detectors
+        self.min_votes = min_votes
 
     def detect(self, image: Image.Image):
 
@@ -70,6 +71,7 @@ class BboxVoting:
         # refine bboxes by bbox voting
         refined_bboxes = np.empty_like(base_bboxes)
         refined_scores = np.empty_like(base_scores)
+        votes = np.sum(match_mat, axis=1)
 
         for i in range(len(base_bboxes)):
             match = match_mat[i]
@@ -79,4 +81,5 @@ class BboxVoting:
             refined_bboxes[i] = np.sum(scores[:, None] * bboxes, axis=0) / scores.sum()
             refined_scores[i] = np.average(scores)
 
-        return refined_bboxes, refined_scores
+        min_votes_mask = votes >= self.min_votes
+        return refined_bboxes[min_votes_mask], refined_scores[min_votes_mask]

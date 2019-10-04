@@ -32,17 +32,17 @@ from kr.datasets import KuzushijiRecognitionDataset
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epoch', '-e', type=int, default=500,
+    parser.add_argument('--epoch', '-e', type=int, default=700,
                         help='Number of epochs to train')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='GPU ID (negative value indicates CPU)')
     parser.add_argument('--out', '-o', default='result',
                         help='Output directory')
-    parser.add_argument('--batchsize', '-b', type=int, default=32,
+    parser.add_argument('--batchsize', '-b', type=int, default=16,
                         help='Validation minibatch size')
     parser.add_argument('--resume', '-r', default='',
                             help='Initialize the trainer from given file')
-    parser.add_argument('--model', choices=('unet', 'res18unet'),
+    parser.add_argument('--model', choices=('res18unet', 'unet'),
                         default='res18unet')
     parser.add_argument('--full-data', '-F', action='store_true', default=False,
                         help='Flag to use all training dataset.')

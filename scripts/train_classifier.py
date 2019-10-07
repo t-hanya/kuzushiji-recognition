@@ -67,7 +67,8 @@ class Preprocess:
                 alb.OneOf([
                     alb.Rotate(limit=5),
                     alb.GridDistortion(distort_limit=0.2),
-                ]),
+                    alb.ElasticTransform(alpha=50, sigma=10, alpha_affine=2),
+                ], p=0.7),
                 alb.OneOf([
                     alb.GaussNoise(),
                     alb.IAAAdditiveGaussianNoise()

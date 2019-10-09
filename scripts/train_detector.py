@@ -21,7 +21,7 @@ from PIL import Image
 import numpy as np
 
 from kr.detector.centernet.model import UnetCenterNet
-from kr.detector.centernet.resnet import Res18UnetCenterNet
+from kr.detector.centernet.resnet import SERes34UnetCenterNet
 from kr.detector.centernet.training import TrainingModel
 from kr.detector.centernet.heatmap import generate_heatmap
 from kr.detector.centernet.crop import RandomCropAndResize
@@ -42,8 +42,8 @@ def parse_args():
                         help='Validation minibatch size')
     parser.add_argument('--resume', '-r', default='',
                             help='Initialize the trainer from given file')
-    parser.add_argument('--model', choices=('res18unet', 'unet'),
-                        default='res18unet')
+    parser.add_argument('--model', choices=('res34unet', 'unet'),
+                        default='res34unet')
     parser.add_argument('--full-data', '-F', action='store_true', default=False,
                         help='Flag to use all training dataset.')
     args = parser.parse_args()
@@ -182,8 +182,8 @@ def main():
     # setup model
     if args.model == 'unet':
         model = UnetCenterNet()
-    elif args.model == 'res18unet':
-        model = Res18UnetCenterNet()
+    elif args.model == 'res34unet':
+        model = SERes34UnetCenterNet()
 
     training_model = TrainingModel(model)
     if args.gpu >= 0:

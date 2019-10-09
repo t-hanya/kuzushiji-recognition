@@ -9,9 +9,9 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 from chainer.initializers import normal
-
 from chainer.backends import cuda
 from chainercv.utils import non_maximum_suppression
+from chainercv.links import SEBlock
 import numpy as np
 from PIL import Image
 
@@ -33,6 +33,7 @@ class Block(chainer.Chain):
             self.conv2 = L.Convolution2D(out_ch, out_ch, ksize=3,
                                          pad=1, nobias=True, **kw)
             self.bn2 = L.BatchNormalization(out_ch)
+            self.seblock = SEBlock(out_ch)
             if stride != 1:
                 self.conv_skip = L.Convolution2D(None, out_ch, ksize=1,
                                                  stride=stride,
@@ -44,14 +45,15 @@ class Block(chainer.Chain):
     def forward(self, x: chainer.Variable) -> chainer.Variable:
         h = F.relu(self.bn1(self.conv1(x)))
         h = self.bn2(self.conv2(h))
+        h = self.seblock(h)
         if self.stride != 1:
             x = self.bn_skip(self.conv_skip(x))
 
         return F.relu(h + x)
 
 
-class Resnet18(chainer.Chain):
-    """Resnet18 backbone CNN."""
+class SEResnet34(chainer.Chain):
+    """SEResnet34 backbone CNN."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -61,25 +63,48 @@ class Resnet18(chainer.Chain):
             self.conv1 = L.Convolution2D(None, 64, ksize=7,
                                          stride=2, pad=3, **kw)
             self.bn1 = L.BatchNormalization(64)
-            self.block2 = Block(64, stride=2)
-            self.block3 = Block(64)
-            self.block4 = Block(128, stride=2)
-            self.block5 = Block(128)
-            self.block6 = Block(256, stride=2)
-            self.block7 = Block(256)
-            self.block8 = Block(512, stride=2)
-            self.block9 = Block(512)
+            self.block2_1 = Block(64, stride=2)
+            self.block2_2 = Block(64)
+            self.block2_3 = Block(64)
+
+            self.block3_1 = Block(128, stride=2)
+            self.block3_2 = Block(128)
+            self.block3_3 = Block(128)
+            self.block3_4 = Block(128)
+
+            self.block4_1 = Block(256, stride=2)
+            self.block4_2 = Block(256)
+            self.block4_3 = Block(256)
+            self.block4_4 = Block(256)
+            self.block4_5 = Block(256)
+            self.block4_6 = Block(256)
+
+            self.block5_1 = Block(512, stride=2)
+            self.block5_2 = Block(512)
+            self.block5_3 = Block(512)
 
     def forward(self, x):
         h = F.relu(self.bn1(self.conv1(x)))
-        h = self.block2(h)
-        e4 = self.block3(h)
-        h = self.block4(e4)
-        e8 = self.block5(h)
-        h = self.block6(e8)
-        e16 = self.block7(h)
-        h = self.block8(e16)
-        e32 = self.block9(h)
+
+        h = self.block2_1(h)
+        h = self.block2_2(h)
+        e4 = self.block2_3(h)
+
+        h = self.block3_1(e4)
+        h = self.block3_2(h)
+        h = self.block3_3(h)
+        e8 = self.block3_4(h)
+
+        h = self.block4_1(e8)
+        h = self.block4_2(h)
+        h = self.block4_3(h)
+        h = self.block4_4(h)
+        h = self.block4_5(h)
+        e16 = self.block4_6(h)
+
+        h = self.block5_1(e16)
+        h = self.block5_2(h)
+        e32 = self.block5_3(h)
         return e4, e8, e16, e32
 
 
@@ -107,8 +132,8 @@ def _sigmoid(x):
     return 1. / (1. + xp.exp(-x))
 
 
-class Res18UnetCenterNet(chainer.Chain):
-    """CenterNet with Resnet18-Unet backbone."""
+class SERes34UnetCenterNet(chainer.Chain):
+    """CenterNet with SEResnet34-Unet backbone."""
 
     stride: int = 4
     image_min_side: int = 832
@@ -118,7 +143,7 @@ class Res18UnetCenterNet(chainer.Chain):
         out_ch = n_fg_class + 4
 
         with self.init_scope():
-            self.enc = Resnet18()
+            self.enc = SEResnet34()
             self.dc1 = DeconvBlock(512, 256)
             self.dc2 = DeconvBlock(512, 128)
             self.dc3 = DeconvBlock(256, 64)

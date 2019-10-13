@@ -32,7 +32,7 @@ from kr.datasets import RandomSampler
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epoch', '-e', type=int, default=500,
+    parser.add_argument('--epoch', '-e', type=int, default=1000,
                         help='Number of epochs to train')
     parser.add_argument('--gpu', '-g', type=int, default=0,
                         help='GPU ID (negative value indicates CPU)')
@@ -40,14 +40,14 @@ def parse_args():
                         help='Resume from the specified snapshot')
     parser.add_argument('--out', '-o', default='result',
                         help='Output directory')
-    parser.add_argument('--batchsize', '-b', type=int, default=512,
+    parser.add_argument('--batchsize', '-b', type=int, default=192,
                         help='Validation minibatch size')
     parser.add_argument('--lr', '-l', type=float, default=0.1,
                         help='Learning rate')
     parser.add_argument('--weight-decay', '-w', type=float, default=1e-4,
                         help='Weight decay')
     parser.add_argument('--model', choices=['resnet18', 'resnet34', 'mobilenetv3'],
-                        default='resnet18', help='Backbone CNN model.')
+                        default='mobilenetv3', help='Backbone CNN model.')
     parser.add_argument('--full-data', '-F', action='store_true', default=False,
                         help='Flag to use all training dataset.')
     args = parser.parse_args()

@@ -39,7 +39,7 @@ if __name__ == '__main__':
     table = pd.read_csv(str(TRAINVAL_CSV))
 
     np.random.seed(0)
-    cv = GroupKFold(n_splits=4)
+    cv = GroupKFold(n_splits=N_SPLIT)
     splits = cv.split(image_paths, groups=group_labels)
 
     for i, (train_indices, val_indices) in enumerate(splits):

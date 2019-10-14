@@ -25,8 +25,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('detector_path', type=str)
     parser.add_argument('classifier_path', type=str)
-    parser.add_argument('--bbox-score-threshold', type=float, default=0.5)
-    parser.add_argument('--class-score-threshold', type=float, default=0.0)
+    parser.add_argument('--bbox-score-threshold', type=float, default=0.3)
+    parser.add_argument('--class-score-threshold', type=float, default=0.5)
     parser.add_argument('--gpu', type=int, default=0)
     args = parser.parse_args()
     return args

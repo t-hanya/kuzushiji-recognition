@@ -25,14 +25,19 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('detector_path', type=str)
     parser.add_argument('classifier_path', type=str)
+    parser.add_argument('--bbox-score-threshold', type=float, default=0.5)
+    parser.add_argument('--class-score-threshold', type=float, default=0.0)
     parser.add_argument('--gpu', type=int, default=0)
     args = parser.parse_args()
     return args
 
 
-def load_model(detector_path, classifier_path, gpu, num_classes):
+def load_model(detector_path, classifier_path, gpu, num_classes,
+               bbox_score_threshold):
     """Load model."""
-    detector = Res18UnetCenterNet()
+    detector = Res18UnetCenterNet(
+        score_threshold=bbox_score_threshold)
+
     chainer.serializers.load_npz(
         detector_path,
         detector
@@ -68,7 +73,8 @@ def main():
     # load model
     detector, classifier = load_model(
         args.detector_path, args.classifier_path, args.gpu,
-        num_classes=len(mapping))
+        num_classes=len(mapping),
+        bbox_score_threshold=args.bbox_score_threshold)
 
     with csv_path.open('w') as f:
         f.write('image_id,labels\n')
@@ -77,10 +83,12 @@ def main():
             print('[{}/{}] {}'.format(i + 1, len(dataset), data['image_id']))
 
             bboxes, _ = detector.detect(data['image'])
-            unicode_indices, _ = classifier.classify(data['image'], bboxes)
+            unicode_indices, scores = classifier.classify(data['image'], bboxes)
             centers = (bboxes[:, 0:2] + bboxes[:, 2:4]) / 2.
             label_items = []
-            for unicode_index, center in zip(unicode_indices, centers):
+            for unicode_index, center, score in zip(unicode_indices, centers, scores):
+                if score < args.class_score_threshold:
+                    continue
                 unicode = mapping.index_to_unicode(unicode_index)
                 x = int(round(center[0]))
                 y = int(round(center[1]))
@@ -96,6 +104,8 @@ def main():
             'submission_id': submission_id,
             'detector_path': args.detector_path,
             'classifier_path': args.classifier_path,
+            'bbox_score_threshold': args.bbox_score_threshold,
+            'class_score_threshold': args.class_score_threshold
         }, f, indent=2)
 
 

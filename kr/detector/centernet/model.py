@@ -27,9 +27,13 @@ class UnetCenterNet(chainer.Chain):
     stride: int = 4
     image_min_side: int = 832
 
-    def __init__(self, n_fg_class: int = 1) -> None:
+    def __init__(self,
+                 n_fg_class: int = 1,
+                 score_threshold: float = 0.5
+                ) -> None:
         super().__init__()
         out_ch = n_fg_class + 4
+        self.score_threshold = score_threshold
 
         with self.init_scope():
             # change stride size from 1 to 2 to reduce output size
@@ -97,7 +101,6 @@ class UnetCenterNet(chainer.Chain):
 
     def detect(self,
                image: Image.Image,
-               score_threshold: float = 0.5,
                nms_iou_threshold: float = 0.5
               ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Detect characters from the image."""
@@ -128,7 +131,7 @@ class UnetCenterNet(chainer.Chain):
             heatmap[:-4] = _sigmoid(heatmap[:-4])
 
         bboxes, _, scores = heatmap_to_labeled_bboxes(heatmap,
-                                                      score_threshold)
+                                                      self.score_threshold)
         bboxes, scores = bboxes[0], scores[0]
 
         hm_h, hm_w = heatmap.shape[2:4]

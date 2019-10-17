@@ -67,7 +67,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('pretrained', type=str,
                         help='Path to pretrained model parameter file.')
-    parser.add_argument('--epoch', '-e', type=int, default=50,
+    parser.add_argument('--epoch', '-e', type=int, default=100,
                         help='Number of epochs to train')
     parser.add_argument('--gpu', '-g', type=int, default=0,
                         help='GPU ID (negative value indicates CPU)')

@@ -1,5 +1,5 @@
 """
-Finetune kuzushiji classifier using pesuedo labels.
+Finetune kuzushiji classifier using pseudo labels.
 """
 
 
@@ -32,17 +32,17 @@ from kr.datasets import KuzushijiUnicodeMapping
 from kr.datasets import RandomSampler
 
 
-class KuzushijiPesuedoLabelsDataset(DatasetMixin):
-    """Kuzushiji per-character pesuedo label dataset."""
+class KuzushijiPseudoLabelsDataset(DatasetMixin):
+    """Kuzushiji per-character pseudo label dataset."""
 
     def __init__(self,
                  data_dir: str
                 ) -> None:
 
         self.dir_path = Path(data_dir)
-        annt_path = self.dir_path / 'pesuedo_labels.json'
+        annt_path = self.dir_path / 'pseudo_labels.json'
 
-        self.data = json.load(annt_path.open())['pesuedo_labels']
+        self.data = json.load(annt_path.open())['pseudo_labels']
         self.mapping = KuzushijiUnicodeMapping()
         self.all_labels = np.array(
             [self.mapping.unicode_to_index(d['unicode']) for d in self.data],
@@ -83,8 +83,8 @@ def parse_args():
                         help='Weight decay')
     parser.add_argument('--model', choices=['resnet18', 'resnet34', 'mobilenetv3'],
                         default='mobilenetv3', help='Backbone CNN model.')
-    parser.add_argument('--pesuedo-labels-dir', type=str, default=None,
-                        help='Path to pesuedo label dataset directory.')
+    parser.add_argument('--pseudo-labels-dir', type=str, default=None,
+                        help='Path to pseudo label dataset directory.')
     args = parser.parse_args()
     return args
 
@@ -121,17 +121,17 @@ class Preprocess:
         return image, label
 
 
-def prepare_dataset(image_size=(112, 112), pesuedo_labels_dir=None):
+def prepare_dataset(image_size=(112, 112), pseudo_labels_dir=None):
 
     train_raw = RandomSampler(
         KuzushijiCharCropDataset(split='trainval'),
         virtual_size=20000)
 
-    if pesuedo_labels_dir:
+    if pseudo_labels_dir:
         train_raw = ConcatenatedDataset(
             train_raw,
             RandomSampler(
-                KuzushijiPesuedoLabelsDataset(pesuedo_labels_dir),
+                KuzushijiPseudoLabelsDataset(pseudo_labels_dir),
                 virtual_size=10000,
             )
         )
@@ -193,7 +193,7 @@ def main():
 
     # setup dataset
     train, val = prepare_dataset(image_size=model.input_size,
-                                 pesuedo_labels_dir=args.pesuedo_labels_dir)
+                                 pseudo_labels_dir=args.pseudo_labels_dir)
     train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
     val_iter = chainer.iterators.MultiprocessIterator(val, args.batchsize,
                                                       repeat=False,

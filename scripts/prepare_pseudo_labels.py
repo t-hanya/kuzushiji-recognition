@@ -1,5 +1,5 @@
 """
-Create pesuedo labels.
+Create pseudo labels.
 """
 
 
@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('classifier_path', type=str)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--out', type=str,
-                        default='data/kuzushiji-recognition-pesuedo')
+                        default='data/kuzushiji-recognition-pseudo')
     args = parser.parse_args()
     return args
 
@@ -82,7 +82,7 @@ def main():
     output_root.mkdir(parents=True, exist_ok=True)
 
     idx = 0
-    pesuedo_labels = []
+    pseudo_labels = []
     for i, data in enumerate(dataset):
         print('[{}/{}] {}'.format(i + 1, len(dataset), data['image_id']))
         image = data['image']
@@ -114,7 +114,7 @@ def main():
 
             # keep cropped image file path
             modified = bbox - np.tile(padded_bbox[0:2], 2)
-            pesuedo_labels.append(
+            pseudo_labels.append(
                 {'image_path': str(fpath.relative_to(output_root)),
                  'original_bbox': bbox.tolist(),
                  'bbox': modified.tolist(),
@@ -125,9 +125,9 @@ def main():
     out = {
         'detector': args.detector_path,
         'classifier': args.classifier_path,
-        'pesuedo_labels': pesuedo_labels,
+        'pseudo_labels': pseudo_labels,
     }
-    with (output_root / 'pesuedo_labels.json').open('w') as f:
+    with (output_root / 'pseudo_labels.json').open('w') as f:
         json.dump(out, f, indent=2)
 
 

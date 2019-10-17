@@ -1,5 +1,5 @@
 """
-Training script of kuzushiji character classification model.
+Finetune kuzushiji classifier using pseudo labels.
 """
 
 
@@ -14,7 +14,9 @@ from chainer import training
 from chainer.training import extension
 from chainer.training import extensions
 from chainer.training import triggers
+from chainer.dataset import DatasetMixin
 from chainer.datasets import split_dataset_random
+from chainer.datasets import ConcatenatedDataset
 from chainer.datasets import TransformDataset
 from PIL import Image
 import numpy as np
@@ -30,9 +32,42 @@ from kr.datasets import KuzushijiUnicodeMapping
 from kr.datasets import RandomSampler
 
 
+class KuzushijiPseudoLabelsDataset(DatasetMixin):
+    """Kuzushiji per-character pseudo label dataset."""
+
+    def __init__(self,
+                 data_dir: str
+                ) -> None:
+
+        self.dir_path = Path(data_dir)
+        annt_path = self.dir_path / 'pseudo_labels.json'
+
+        self.data = json.load(annt_path.open())['pseudo_labels']
+        self.mapping = KuzushijiUnicodeMapping()
+        self.all_labels = np.array(
+            [self.mapping.unicode_to_index(d['unicode']) for d in self.data],
+            dtype=np.int32)
+
+        self.num_samples = np.zeros(len(self.mapping), dtype=np.int32)
+        for label in self.all_labels:
+            self.num_samples[label] += 1
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def get_example(self, i) -> dict:
+        data = self.data[i]
+        data = data.copy()
+        data['image'] = Image.open(self.dir_path / data['image_path'])
+        data['label'] = self.mapping.unicode_to_index(data['unicode'])
+        return data
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epoch', '-e', type=int, default=1000,
+    parser.add_argument('pretrained', type=str,
+                        help='Path to pretrained model parameter file.')
+    parser.add_argument('--epoch', '-e', type=int, default=100,
                         help='Number of epochs to train')
     parser.add_argument('--gpu', '-g', type=int, default=0,
                         help='GPU ID (negative value indicates CPU)')
@@ -42,14 +77,14 @@ def parse_args():
                         help='Output directory')
     parser.add_argument('--batchsize', '-b', type=int, default=192,
                         help='Validation minibatch size')
-    parser.add_argument('--lr', '-l', type=float, default=0.1,
+    parser.add_argument('--lr', '-l', type=float, default=0.01,
                         help='Learning rate')
     parser.add_argument('--weight-decay', '-w', type=float, default=1e-4,
                         help='Weight decay')
     parser.add_argument('--model', choices=['resnet18', 'resnet34', 'mobilenetv3'],
                         default='mobilenetv3', help='Backbone CNN model.')
-    parser.add_argument('--full-data', '-F', action='store_true', default=False,
-                        help='Flag to use all training dataset.')
+    parser.add_argument('--pseudo-labels-dir', type=str, default=None,
+                        help='Path to pseudo label dataset directory.')
     args = parser.parse_args()
     return args
 
@@ -64,18 +99,6 @@ class Preprocess:
             self.aug_func = alb.Compose([
                 alb.RGBShift(),
                 alb.RandomBrightnessContrast(),
-                alb.OneOf([
-                    alb.Rotate(limit=5),
-                    alb.GridDistortion(distort_limit=0.2),
-                    alb.ElasticTransform(alpha=50, sigma=10, alpha_affine=2),
-                ], p=0.7),
-                alb.OneOf([
-                    alb.GaussNoise(),
-                    alb.IAAAdditiveGaussianNoise()
-                ]),
-                alb.CoarseDropout(
-                    max_holes=1, max_height=h // 2, max_width=w // 2,
-                    min_height=h // 4, min_width=w // 4, fill_value=128)
             ])
         else:
             self.crop_func = CenterCropAndResize(size=image_size)
@@ -98,13 +121,23 @@ class Preprocess:
         return image, label
 
 
-def prepare_dataset(image_size=(64, 64), full_data=False):
+def prepare_dataset(image_size=(112, 112), pseudo_labels_dir=None):
 
-    train_split = 'trainval' if full_data else 'train'
+    train_raw = RandomSampler(
+        KuzushijiCharCropDataset(split='trainval'),
+        virtual_size=20000)
+
+    if pseudo_labels_dir:
+        train_raw = ConcatenatedDataset(
+            train_raw,
+            RandomSampler(
+                KuzushijiPseudoLabelsDataset(pseudo_labels_dir),
+                virtual_size=10000,
+            )
+        )
+
     train = TransformDataset(
-        RandomSampler(
-            KuzushijiCharCropDataset(split=train_split),
-            virtual_size=20000),
+        train_raw,
         Preprocess(image_size=image_size, augmentation=True))
 
     val = TransformDataset(
@@ -151,6 +184,7 @@ def main():
         model = Resnet34(n_classes)
     elif args.model == 'mobilenetv3':
         model = MobileNetV3(n_classes)
+    chainer.serializers.load_npz(args.pretrained, model)
     train_model = L.Classifier(model)
 
     if args.gpu >= 0:
@@ -159,7 +193,7 @@ def main():
 
     # setup dataset
     train, val = prepare_dataset(image_size=model.input_size,
-                                 full_data=args.full_data)
+                                 pseudo_labels_dir=args.pseudo_labels_dir)
     train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
     val_iter = chainer.iterators.MultiprocessIterator(val, args.batchsize,
                                                       repeat=False,
@@ -176,9 +210,9 @@ def main():
 
     trainer.extend(extensions.Evaluator(val_iter, train_model,
                                         device=args.gpu))
-    trainer.extend(extensions.snapshot(), trigger=(100, 'epoch'))
+    trainer.extend(extensions.snapshot(), trigger=(10, 'epoch'))
     trainer.extend(extensions.snapshot_object(
-                   model, 'model_{.updater.epoch}.npz'), trigger=(100, 'epoch'))
+                   model, 'model_{.updater.epoch}.npz'), trigger=(10, 'epoch'))
     trainer.extend(extensions.LogReport())
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss',
@@ -186,8 +220,7 @@ def main():
     trainer.extend(extensions.ProgressBar(update_interval=10))
 
     # learning rate scheduling
-    lr_drop_epochs = [int(args.epoch * 0.5),
-                      int(args.epoch * 0.75)]
+    lr_drop_epochs = [int(args.epoch * 0.5)]
     lr_drop_trigger = triggers.ManualScheduleTrigger(lr_drop_epochs, 'epoch')
     trainer.extend(LearningRateDrop(0.1), trigger=lr_drop_trigger)
     trainer.extend(extensions.observe_lr())

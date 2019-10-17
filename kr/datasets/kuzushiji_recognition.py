@@ -5,7 +5,6 @@ Kuzushiji dataset
 
 import json
 from pathlib import Path
-import random
 from typing import Optional
 
 from chainer.dataset import DatasetMixin
@@ -14,15 +13,19 @@ import pandas as pd
 from PIL import Image
 
 
-_prj_root = Path(__file__).resolve().parent.parent
+_prj_root = Path(__file__).resolve().parent.parent.parent
 _dataset_dir = _prj_root / 'data' / 'kuzushiji-recognition'
 _converted_dir = _prj_root / 'data' / 'kuzushiji-recognition-converted'
+_gsplit_dir = _prj_root / 'data' / 'kuzushiji-recognition-gsplit'
 
 
 class KuzushijiRecognitionDataset(DatasetMixin):
     """Kaggle Kuzushiji Recognition training dataset."""
 
-    def __init__(self, split: Optional[str] = None) -> None:
+    def __init__(self,
+                 split: Optional[str] = None,
+                 cv_index: int = 0,
+                ) -> None:
         assert _dataset_dir.exists(), \
                 ('Download Kaggle Kuzushiji Recognition dataset '
                  'and move files to <prj>/data/kuzushiji-recognition/')
@@ -30,7 +33,7 @@ class KuzushijiRecognitionDataset(DatasetMixin):
         if split is None or split == 'trainval':
             csv_path = _dataset_dir / 'train.csv'
         elif split in ('train', 'val'):
-            csv_path = _converted_dir / f'{split}.csv'
+            csv_path = _gsplit_dir / f'{split}-{cv_index}.csv'
 
         self.table = pd.read_csv(csv_path)
         self.image_dir = _dataset_dir / 'train_images'
@@ -41,6 +44,7 @@ class KuzushijiRecognitionDataset(DatasetMixin):
     def get_example(self, i: int) -> dict:
         row = self.table.iloc[i]
 
+        image_id = str(row.image_id)
         image = Image.open(self.image_dir / (row.image_id + '.jpg'))
 
         try:
@@ -56,7 +60,10 @@ class KuzushijiRecognitionDataset(DatasetMixin):
             unicodes = []
             bboxes = np.empty((0, 4), dtype=np.int)
 
-        return {'image': image, 'bboxes': bboxes, 'unicodes': unicodes}
+        return {'image_id': image_id,
+                'image': image,
+                'bboxes': bboxes,
+                'unicodes': unicodes}
 
 
 class KuzushijiUnicodeMapping:
@@ -94,14 +101,27 @@ class KuzushijiUnicodeMapping:
 class KuzushijiCharCropDataset(DatasetMixin):
     """Kuzushiji cropped character image dataset."""
 
-    def __init__(self, split: Optional[str] = None) -> None:
-        split = split or 'trainval'
-        assert split in ('train', 'val', 'trainval')
+    def __init__(self,
+                 split: Optional[str] = None,
+                 cv_index: int = 0,
+                ) -> None:
+        if split is None or split == 'trainval':
+            annt_path = _gsplit_dir / 'char_images_trainval.json'
+            annt = json.load(annt_path.open())
+        else:
+            annt_path = _gsplit_dir / f'char_images_{split}-{cv_index}.json'
+            annt = json.load(annt_path.open())
 
-        self.dir_path = _converted_dir
-        annt = json.load((_converted_dir / f'char_images_{split}.json').open())
+        self.dir_path = _gsplit_dir
         self.data = annt['annotations']
         self.mapping = KuzushijiUnicodeMapping()
+        self.all_labels = np.array(
+            [self.mapping.unicode_to_index(d['unicode']) for d in self.data],
+            dtype=np.int32)
+
+        self.num_samples = np.zeros(len(self.mapping), dtype=np.int32)
+        for label in self.all_labels:
+            self.num_samples[label] += 1
 
     def __len__(self) -> int:
         return len(self.data)
@@ -112,19 +132,6 @@ class KuzushijiCharCropDataset(DatasetMixin):
         data['image'] = Image.open(self.dir_path / data['image_path'])
         data['label'] = self.mapping.unicode_to_index(data['unicode'])
         return data
-
-
-class RandomSampler(DatasetMixin):
-
-    def __init__(self, dataset, virtual_size=10000):
-        self.dataset = dataset
-        self.virtual_size = virtual_size
-
-    def __len__(self):
-        return self.virtual_size
-
-    def get_example(self, i):
-        return random.choice(self.dataset)
 
 
 class KuzushijiTestImages(DatasetMixin):

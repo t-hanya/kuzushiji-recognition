@@ -4,7 +4,7 @@ Kuzushiji Recognition
 
 `Kaggle Kuzushiji Recognition <https://www.kaggle.com/c/kuzushiji-recognition>`_: Code for 8th place solution.
 
-I use `CenterNet <https://arxiv.org/abs/1904.07850>`_ character detection model and `MobileNetV3 <https://arxiv.org/abs/1905.02244>`_ per-character classification model.
+The kuzushiji recognition pipeline is consists of two models: `CenterNet <https://arxiv.org/abs/1904.07850>`_ character detection model and `MobileNetV3 <https://arxiv.org/abs/1905.02244>`_ per-character classification model.
 
 
 .. contents::
@@ -16,7 +16,9 @@ Setup
 Language environment
 --------------------
 
-* Python 3.7.3
+Python version:
+
+* 3.7.3
 
 Libraries:
 

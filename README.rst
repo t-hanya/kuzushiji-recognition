@@ -2,7 +2,7 @@
 Kuzushiji Recognition
 =====================
 
-`Kaggle Kuzushiji Recognition <https://www.kaggle.com/c/kuzushiji-recognition>`_: Code for 8th place solution.
+`Kaggle Kuzushiji Recognition <https://www.kaggle.com/c/kuzushiji-recognition>`_: Code for the 8th place solution.
 
 The kuzushiji recognition pipeline is consists of two models: `CenterNet <https://arxiv.org/abs/1904.07850>`_ character detection model and `MobileNetV3 <https://arxiv.org/abs/1905.02244>`_ per-character classification model.
 

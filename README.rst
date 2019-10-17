@@ -121,6 +121,43 @@ To generate a CSV for submission, please execute the following commands.:
        ./results/classifier-finetune/model_100.npz
 
 
+Python API
+==========
+
+The detector class and the classifier class provide easy-to-use inferface for inference. This is an example of inference code. Note that the bounding box format is ``(xmin, ymin, xmax, ymax)``.
+
+.. code-block:: python
+
+   import chainer
+   from PIL import Image
+
+   from kr.detector.centernet.resnet import Res18UnetCenterNet
+   from kr.classifier.softmax.mobilenetv3 import MobileNetV3
+   from kr.datasets import KuzushijiUnicodeMapping
+
+
+   # unicode <-> unicode index mapping
+   mapping = KuzushijiUnicodeMapping()
+
+   # load trained detector
+   detector = Res18UnetCenterNet()
+   chainer.serializers.load_npz('./results/detector/model_700.npz', detector)
+
+   # load trained classifier
+   classifier = MobileNetV3(out_ch=len(mapping))
+   chainer.serializers.load_npz('./results/classifier/model_900.npz', classifier)
+
+   # load image
+   image = Image.open('path/to/image.jpg')
+
+   # character detection
+   bboxes, bbox_scores = detector.detect(image)
+
+   # character classification
+   unicode_indices, scores = classifier.classify(image, bboxes)
+   unicodes = [mapping.index_to_unicode(idx) for idx in unicode_indices]
+
+
 License
 =======
 

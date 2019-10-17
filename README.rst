@@ -35,12 +35,12 @@ Libraries:
 
 For unittest:
 
-* pytest==4.4.1
+* pytest (4.4.1)
 
 Download dataset
 ----------------
 
-Please download and unzip the competition dataset to ``<repo root>/data/kuzushiji-recognition``.
+Please download the competition dataset from `here <https://www.kaggle.com/c/kuzushiji-recognition/data>`_ and unzip to ``<repo root>/data/kuzushiji-recognition``.
 
 The expected directory structure is as follows::
 
@@ -54,41 +54,54 @@ The expected directory structure is as follows::
                sample_submission.csv
 
 
-
 Training procedure
 ==================
 
 Please follow the steps below to train kuzushiji recognition models.
 
-1. Set environment variable::
+1. Set environment variable:
+
+.. code-block::
 
    cd <path to this repo>
    export PYTHONPATH=`pwd`
 
-2. Split all annotated samples written in ``train.csv`` into train and validation split::
+2. Split all annotated samples written in ``train.csv`` into train and validation split:
+
+.. code-block::
 
    python scripts/prepare_train_val_split.py
 
-3. Prepare per-character cropped image set for character classifier training::
+3. Prepare per-character cropped image set for character classifier training:
+
+.. code-block::
 
    python scripts/prepare_char_crop_dataset.py
 
-4. Train character detection model::
+4. Train character detection model:
+
+.. code-block::
 
    python scripts/train_detector.py --gpu 0 --out ./results/detector --full-data
 
-5. Train character classification model::
+5. Train character classification model:
+
+.. code-block::
 
    python scripts/train_classifier.py --gpu 0 --out ./results/classifier --full-data
 
-6. Prepare pseudo label using trained detector and classifier::
+6. Prepare pseudo label using trained detector and classifier:
+
+.. code-block::
 
    python scripts/prepare_pseudo_labels.py --gpu 0 \
        ./result/detector/model_700.npz \
        ./result/classifier/model_900.npz \
        --out data/kuzushiji-recognition-pesuedo
 
-7. Finetune classifier using pseudo label and original training data::
+7. Finetune classifier using pseudo label and original training data:
+
+.. code-block::
 
    python scripts/finetune_classifier.py --gpu 0 \
        --pseudo-labels-dir  data/kuzushiji-recognition-pesuedo \
@@ -99,7 +112,9 @@ Please follow the steps below to train kuzushiji recognition models.
 Prepare submission
 ==================
 
-To generate a CSV for submission, please execute the following commands.::
+To generate a CSV for submission, please execute the following commands.:
+
+.. code-block::
 
    python scripts/prepare_submission.py --gpu 0 \
        ./result/detector/model_700.npz \

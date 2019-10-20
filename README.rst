@@ -95,8 +95,8 @@ Please follow the steps below to train kuzushiji recognition models.
 .. code-block::
 
    python scripts/prepare_pseudo_labels.py --gpu 0 \
-       ./result/detector/model_700.npz \
-       ./result/classifier/model_900.npz \
+       ./results/detector/model_700.npz \
+       ./results/classifier/model_900.npz \
        --out data/kuzushiji-recognition-pesuedo
 
 7. Finetune classifier using pseudo label and original training data:
@@ -106,7 +106,7 @@ Please follow the steps below to train kuzushiji recognition models.
    python scripts/finetune_classifier.py --gpu 0 \
        --pseudo-labels-dir  data/kuzushiji-recognition-pesuedo \
        --out ./results/classifier-finetune \
-       ./result/classifier/model_900.npz
+       ./results/classifier/model_900.npz
 
 
 Prepare submission
@@ -117,7 +117,7 @@ To generate a CSV for submission, please execute the following commands.:
 .. code-block::
 
    python scripts/prepare_submission.py --gpu 0 \
-       ./result/detector/model_700.npz \
+       ./results/detector/model_700.npz \
        ./results/classifier-finetune/model_100.npz
 
 

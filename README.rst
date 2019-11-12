@@ -97,14 +97,14 @@ Please follow the steps below to train kuzushiji recognition models.
    python scripts/prepare_pseudo_labels.py --gpu 0 \
        ./results/detector/model_700.npz \
        ./results/classifier/model_900.npz \
-       --out data/kuzushiji-recognition-pesuedo
+       --out data/kuzushiji-recognition-pseudo
 
 7. Finetune classifier using pseudo label and original training data:
 
 .. code-block::
 
    python scripts/finetune_classifier.py --gpu 0 \
-       --pseudo-labels-dir  data/kuzushiji-recognition-pesuedo \
+       --pseudo-labels-dir  data/kuzushiji-recognition-pseudo \
        --out ./results/classifier-finetune \
        ./results/classifier/model_900.npz
 
